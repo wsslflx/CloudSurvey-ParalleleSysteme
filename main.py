@@ -2,7 +2,7 @@ import requests
 import time
 import pymongo
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import os
 from dotenv import load_dotenv
@@ -27,71 +27,47 @@ def connect_to_mongodb(connection_string):
 
 def fetch_retail_prices(params):
     prices = []
+    url = RETAIL_PRICES_API_ENDPOINT
+    skip = 0
+    max_records = 1000  # Maximum number of records per request
     while True:
+        params['$skip'] = skip
         logging.info(f"Fetching data with params: {params}")
-        response = requests.get(RETAIL_PRICES_API_ENDPOINT, params=params)
+        logging.info(f"Fetching data from URL: {url}")
+        try:
+            response = requests.get(url, params=params)
+        except Exception as e:
+            logging.error(f"Exception during request: {e}")
+            break
         if response.status_code != 200:
             logging.error(f"Failed to fetch data: {response.status_code} - {response.text}")
-            break
+            # Break the loop if a 400 Bad Request error occurs
+            if response.status_code == 400:
+                break
+            else:
+                continue  # Optionally retry or handle other status codes
 
         data = response.json()
-        prices.extend(data.get('Items', []))
-        logging.info(f"Fetched {len(data.get('Items', []))} items.")
+        items = data.get('Items', [])
+        if not items:
+            logging.info("No more items to fetch.")
+            break  # Exit the loop if no items are returned
 
-        if 'NextPageLink' in data and data['NextPageLink']:
-            next_page = data['NextPageLink']
-            # Extract query parameters from the next page link
-            params = {}
-            if '?' in next_page:
-                query_string = next_page.split('?')[1]
-                for param in query_string.split('&'):
-                    key, value = param.split('=')
-                    params[key] = value
-            else:
-                break
-            # To respect API rate limits
-            time.sleep(1)
-        else:
-            break
+        prices.extend(items)
+        logging.info(f"Fetched {len(items)} items.")
+
+        # Increment skip for the next iteration
+        skip += max_records
+        time.sleep(1)  # Respect API rate limits
+
     return prices
-
-
-def store_prices(cursor, conn, prices):
-    retrieved_at = datetime.utcnow().isoformat()
-    for item in prices:
-        unit_price = item.get('unitPrice', 0.0)
-        currency_code = item.get('currencyCode', '')
-        region = item.get('armRegionName', '')
-        service_family = item.get('serviceFamily', '')
-        service_id = item.get('serviceId', '')
-        service_name = item.get('serviceName', '')
-        product_id = item.get('productId', '')
-        product_name = item.get('productName', '')
-        sku_id = item.get('skuId', '')
-        sku_name = item.get('skuName', '')
-        effective_start_date = item.get('effectiveStartDate', '')
-
-        cursor.execute('''
-            INSERT INTO azure_spot_prices (
-                unit_price, currency_code, region, service_family, service_id,
-                service_name, product_id, product_name, sku_id, sku_name,
-                effective_start_date, retrieved_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            unit_price, currency_code, region, service_family, service_id,
-            service_name, product_id, product_name, sku_id, sku_name,
-            effective_start_date, retrieved_at
-        ))
-    conn.commit()
-    logging.info(f"Stored {len(prices)} spot price entries in the database.")
-
 
 def insert_spot_price(client, database_name, collection_name, spot_price_data):
     try:
         db = client[database_name]
         collection = db[collection_name]
         # Add a timestamp
-        spot_price_data['retrieved_at'] = datetime.utcnow()
+        spot_price_data['retrieved_at'] = datetime.now(timezone.utc)
         result = collection.insert_one(spot_price_data)
         logging.info(f"Inserted document with ID: {result.inserted_id}")
     except pymongo.errors.DuplicateKeyError:
@@ -108,11 +84,15 @@ def main():
 
     # Define initial parameters for the API request
     params = {
-        '$top': 100,  # Number of items per page
-        # Add filters as needed. Example:
-        # '$filter': "serviceFamily eq 'Compute' and armRegionName eq 'eastus'"
+        '$top': 1000,  # Adjusted to match API's maximum allowed value
+        '$filter': (
+            "serviceFamily eq 'Compute' and "
+            "(armRegionName eq 'westeurope' or "
+            "armRegionName eq 'germanywestcentral' or "
+            "armRegionName eq 'germanynorth') and "
+            "contains(meterName, 'Spot')"
+        )
     }
-
     # Fetch retail prices
     all_prices = fetch_retail_prices(params)
     logging.info(f"Total prices fetched: {len(all_prices)}")
