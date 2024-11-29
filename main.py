@@ -1,16 +1,29 @@
 import requests
-import json
-import sqlite3
 import time
+import pymongo
+from pymongo import MongoClient
 from datetime import datetime
 import logging
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+CONNECTION_STRING = os.getenv('MONGODB_URI')
 RETAIL_PRICES_API_ENDPOINT = "https://prices.azure.com/api/retail/prices"
 DATABASE_NAME = 'azure_spot_prices.db'
 
 base_url = "://prices.azure.com/api/retail/prices?currencyCode='EUR'&"
+logging.basicConfig(level=logging.INFO)
 
-# Initialize SQLite database
+#connect to MongoDb
+def connect_to_mongodb(connection_string):
+    try:
+        client = MongoClient(connection_string)
+        logging.info("Successfully connected to MongoDB Atlas.")
+        return client
+    except Exception as e:
+        logging.error(f"Error connecting to MongoDB: {e}")
+        return None
 
 def fetch_retail_prices(params):
     prices = []
@@ -72,10 +85,26 @@ def store_prices(cursor, conn, prices):
     conn.commit()
     logging.info(f"Stored {len(prices)} spot price entries in the database.")
 
+
+def insert_spot_price(client, database_name, collection_name, spot_price_data):
+    try:
+        db = client[database_name]
+        collection = db[collection_name]
+        # Add a timestamp
+        spot_price_data['retrieved_at'] = datetime.utcnow()
+        result = collection.insert_one(spot_price_data)
+        logging.info(f"Inserted document with ID: {result.inserted_id}")
+    except pymongo.errors.DuplicateKeyError:
+        logging.warning(f"Duplicate document: {spot_price_data.get('_id')}")
+    except Exception as e:
+        logging.error(f"Error inserting document: {e}")
+
+
 def main():
-    # Initialize database
-    conn, cursor = init_db(DATABASE_NAME)
-    logging.info("Initialized SQLite database.")
+
+    client = connect_to_mongodb(CONNECTION_STRING)
+    if not client:
+        return
 
     # Define initial parameters for the API request
     params = {
@@ -88,19 +117,11 @@ def main():
     all_prices = fetch_retail_prices(params)
     logging.info(f"Total prices fetched: {len(all_prices)}")
 
-    # Filter spot prices
-    spot_prices = filter_spot_prices(all_prices)
-    logging.info(f"Total spot prices after filtering: {len(spot_prices)}")
+    for item in all_prices:
+        insert_spot_price(client, "AzureSpotPricesDB", "SpotPrices", item)
 
-    if not spot_prices:
-        logging.warning("No spot prices found with the current filtering criteria.")
-    else:
-        # Store in the database
-        store_prices(cursor, conn, spot_prices)
-
-    # Close database connection
-    conn.close()
-    logging.info("Closed database connection.")
+    client.close()
+    logging.info("MongoDB connection closed.")
 
 if __name__ == "__main__":
     main()
