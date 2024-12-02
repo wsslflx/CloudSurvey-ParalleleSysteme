@@ -1,0 +1,6 @@
+requests
+pymongo
+time
+datetime
+logging
+dotenv
