@@ -26,4 +26,4 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: |
-          python your_script.py
+          python main.py
