@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Load CSV file into a DataFrame
-csv_file = "azure_vm_sizes_unified.csv"
+csv_file = "vm_sizes.csv"
 data = pd.read_csv(csv_file)
 
 CONNECTION_STRING = os.getenv('MONGODB_URI')
