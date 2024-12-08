@@ -1,0 +1,5 @@
+Name der Größe,vCPUs (Anzahl),RDMA-Leistung (GB/s),Spitzenfrequenz für Einzelkern (GHz),Arbeitsspeicherbandbreite (GB/s),Max. temporäre Speicherdatenträger (Menge),Basis-CPU-Frequenz (GHz),Max. NICs (Anzahl),Arbeitsspeicher (GB),Spitzenfrequenz für alle Kerne (GHz),Max. Remotespeicherdatenträger (Menge),Temporäre Datenträgergröße (GiB)
+Standard_HB60rs,60,100,2.55,228,1,2.0,8,263,2.55,4,700
+Standard_HB60-45rs,45,100,2.55,228,1,2.0,8,263,2.55,4,700
+Standard_HB60-30rs,30,100,2.55,228,1,2.0,8,263,2.55,4,700
+Standard_HB60-15rs,15,100,2.55,228,1,2.0,8,263,2.55,4,700
