@@ -7,14 +7,19 @@ import csv
 
 file_path = "Azure URLS.xlsx"
 df = pd.read_excel(file_path)
-# urls = df.iloc[:, 1].astype(str).tolist()
+urls = df.iloc[:, 1].astype(str).tolist()
 
-# """
+"""
 urls = [
     "https://learn.microsoft.com/de-de/azure/virtual-machines/sizes/high-performance-compute/hb-series?tabs=sizeaccelerators",
 ]
-# """
-# Initialize an empty dictionary to store data by instance
+"""
+def normalize_header(header_name):
+    # If the header is "Name Größe", rename it to "Name der Größe"
+    if header_name == "Name Größe":
+        return "Name der Größe"
+    return header_name
+
 
 for url in urls:
     # Fetch the content from the URL
@@ -28,7 +33,7 @@ for url in urls:
     data = {}
 
     # Parse the first table
-    header_1 = [th.get_text(strip=True) for th in tables[0].find('thead').find_all('th')]
+    header_1 = [normalize_header(th.get_text(strip=True)) for th in tables[0].find('thead').find_all('th')]
     rows_1 = tables[0].find('tbody').find_all('tr')
 
     for row in rows_1:
@@ -40,7 +45,7 @@ for url in urls:
             data[name][h] = c
 
     # Parse the second table
-    header_2 = [th.get_text(strip=True) for th in tables[1].find('thead').find_all('th')]
+    header_2 = [normalize_header(th.get_text(strip=True)) for th in tables[1].find('thead').find_all('th')]
     rows_2 = tables[1].find('tbody').find_all('tr')
 
     for row in rows_2:
@@ -52,7 +57,7 @@ for url in urls:
             data[name][h] = c
 
     # Parse the third table
-    header_3 = [th.get_text(strip=True) for th in tables[2].find('thead').find_all('th')]
+    header_3 = [normalize_header(th.get_text(strip=True)) for th in tables[2].find('thead').find_all('th')]
     rows_3 = tables[2].find('tbody').find_all('tr')
 
     for row in rows_3:
@@ -64,7 +69,7 @@ for url in urls:
             data[name][h] = c
 
     # Parse the fourth table
-    header_4 = [th.get_text(strip=True) for th in tables[3].find('thead').find_all('th')]
+    header_4 = [normalize_header(th.get_text(strip=True)) for th in tables[3].find('thead').find_all('th')]
     rows_4 = tables[3].find('tbody').find_all('tr')
 
     for row in rows_4:
