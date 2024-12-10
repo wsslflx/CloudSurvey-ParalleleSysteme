@@ -54,7 +54,7 @@ for info in data.values():
 columns = ["Name der Größe"] + list(all_columns)
 
 # Write to CSV
-with open('vm_sizes.csv', 'w', newline='', encoding='utf-8') as f:
+with open('vm_sizes2.csv', 'w', newline='', encoding='utf-8') as f:
     writer = csv.DictWriter(f, fieldnames=columns)
     writer.writeheader()
 
