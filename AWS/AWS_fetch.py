@@ -1,7 +1,18 @@
 import boto3
 import csv
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from the .env file
+load_dotenv()
+
+# Retrieve credentials from environment variables
+aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+
 def get_all_regions_instance_info():
-    ec2_client = boto3.client('ec2', region_name='eu-central-1')
+    ec2_client = boto3.client('ec2', region_name='eu-central-1', aws_access_key_id=aws_access_key_id,
+    aws_secret_access_key=aws_secret_access_key)
     regions = [region['RegionName'] for region in ec2_client.describe_regions()['Regions']]
     all_instance_types = []
 
