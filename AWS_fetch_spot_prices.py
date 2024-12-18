@@ -4,6 +4,7 @@ import boto3
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from datetime import datetime, timezone
 
 load_dotenv()
 
@@ -12,7 +13,9 @@ def main():
     aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
     aws_secret_key =os.getenv('AWS_SECRET_ACCESS_KEY')
     aws_region = os.environ.get('AWS_REGION', 'us-east-1')  # Default to us-east-1 if not provided
-    mongo_uri = os.environ.get('MONGO_URI')
+    mongo_uri = os.getenv('MONGODB_URI')
+
+    print(aws_access_key,aws_secret_key)
 
     if not aws_access_key or not aws_secret_key or not mongo_uri:
         print("Missing environment variables. Make sure AWS and MongoDB credentials are set.")
@@ -20,8 +23,8 @@ def main():
 
     # Connect to MongoDB
     client = MongoClient(mongo_uri)
-    db = client['aws_spot_prices']
-    collection = db['spot_prices']
+    db = client['aws_spot_prices_db']
+    collection = db['aws_spot_prices']
 
     # Initialize a generic EC2 client (just to fetch regions)
     ec2 = boto3.client(
@@ -32,11 +35,11 @@ def main():
     )
 
     # 1. Get all available AWS regions
-    regions_response = ec2.describe_regions(AllRegions=True)
+    regions_response = ec2.describe_regions()
     regions = [r['RegionName'] for r in regions_response['Regions']]
 
     inserted_count_total = 0
-    start_time = datetime.utcnow() - timedelta(hours=1)  # last hour
+    start_time = datetime.now(timezone.utc) - timedelta(hours=1)  # last hour
 
     for region in regions:
         print(f"Processing region: {region}")
@@ -83,7 +86,7 @@ def main():
                         'spot_price': float(entry['SpotPrice']),
                         'availability_zone': entry['AvailabilityZone'],
                         'timestamp': entry['Timestamp'],
-                        'fetched_at': datetime.utcnow()
+                        'fetched_at': datetime.now(timezone.utc)
                     }
                     for entry in spot_prices
                 ]
