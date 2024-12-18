@@ -19,7 +19,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install boto3 pymongo
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run script
         env:
