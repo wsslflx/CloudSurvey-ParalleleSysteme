@@ -1,8 +1,8 @@
 name: Fetch AWS Spot Prices for All Regions
 
 on:
-  schedule:
-    - cron: "0 * * * *" # Every hour on the hour
+  # schedule:
+  #  - cron: "0 * * * *" # Every hour on the hour
   workflow_dispatch:
 
 jobs:
