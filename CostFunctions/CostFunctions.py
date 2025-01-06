@@ -25,11 +25,15 @@ def fetch_instance_prices(db_name, collection_name,
 
     return results
 
-def cost_one_job(duration, instancePrice):
-    return duration * instancePrice
+def cost_one_job(priceList, hourCombination):
+    cost = 0
+    for hour in hourCombination:
+        cost += priceList[hour]
+
+    return cost
 
 #fetch Instance Price from Database for specific time and return median
-def get_instancePrice(provider, instance, hour, region):
+def get_instancePriceperHour(provider, instance, hour, region):
     list = []
     if provider == "Azure":
         list = fetch_instance_prices("AzureSpotPricesDB", "SpotPrices", instance, hour, region)
@@ -40,17 +44,36 @@ def get_instancePrice(provider, instance, hour, region):
 
     return prices[int(len(prices) / 2)]
 
-# return minimal price and start hour for given duration per Instance
-def cost_startHour(instance, duration):
-    hour = 0
-    cost = 0
-    return cost, hour
+# get prices for all hours of a instance, provider, region and return it in list
+def get_all_instancePriceperHour(provider, instance, region):
+    numbers = list(range(24))
+    costs = []
+    for number in numbers:
+        price = get_instancePriceperHour(provider, instance, numbers, region)
+        costs.append(price)
 
-return_list = (fetch_instance_prices("AzureSpotPricesDB", "SpotPrices", "E2s v5 Spot", 16, "northeurope"))
-spot_prices = [doc['spot_price'] for doc in return_list]
-print(spot_prices)
+    return costs
 
-# import [[instance, time]]
-def main(list):
+def get_hour_combinations(duration):
+    numbers = list(range(24)) # 0 to 23
+    combinations = []
+
+    for i in range(len(numbers)):
+        combination = [numbers[i], numbers[(i + 1) % len(numbers)], numbers[(i + 2) % len(numbers)]]
+        combinations.append(combination)
+
+    return combinations
+
+# import [[instance, time, provider]]
+def min_cost_instance(provider, instance, duration, region):
+    costs_slot = []
+    costsPerHour = get_all_instancePriceperHour(provider, instance, region)
+    hour_combinations = get_hour_combinations(duration)
+
+    for timeSlot in hour_combinations:
+        costs_slot.append([cost_one_job(costsPerHour, timeSlot), timeSlot[0]])
+    costs_slot.sort(key=lambda x: x[0])
+
+    return costs_slot[0]
 
 
