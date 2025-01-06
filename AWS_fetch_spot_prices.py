@@ -9,13 +9,10 @@ from datetime import datetime, timezone
 load_dotenv()
 
 def main():
-    # Get environment variables from GitHub Actions secrets
     aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_key =os.getenv('AWS_SECRET_ACCESS_KEY')
-    aws_region = os.environ.get('AWS_REGION', 'us-east-1')  # Default to us-east-1 if not provided
+    aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    aws_region = os.environ.get('AWS_REGION', 'us-east-1')
     mongo_uri = os.getenv('MONGODB_URI')
-
-    print(aws_access_key,aws_secret_key)
 
     if not aws_access_key or not aws_secret_key or not mongo_uri:
         print("Missing environment variables. Make sure AWS and MongoDB credentials are set.")
@@ -26,7 +23,7 @@ def main():
     db = client['aws_spot_prices_db']
     collection = db['aws_spot_prices']
 
-    # Initialize a generic EC2 client (just to fetch regions)
+    # Initialize a generic EC2 client (just to test connectivity, optional)
     ec2 = boto3.client(
         'ec2',
         region_name=aws_region,
@@ -34,12 +31,15 @@ def main():
         aws_secret_access_key=aws_secret_key
     )
 
-    # 1. Get all available AWS regions
-    regions_response = ec2.describe_regions()
-    regions = [r['RegionName'] for r in regions_response['Regions']]
+    # Hardcode the list of European regions
+    regions = [
+        'eu-central-1', 'eu-west-1', 'eu-west-2', 'eu-south-1',
+        'eu-west-3', 'eu-south-2', 'eu-north-1', 'eu-central-2'
+    ]
 
     inserted_count_total = 0
-    start_time = datetime.now(timezone.utc) - timedelta(hours=1)  # last hour
+
+    start_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
     for region in regions:
         print(f"Processing region: {region}")
@@ -52,7 +52,7 @@ def main():
             aws_secret_access_key=aws_secret_key
         )
 
-        # 2. Get all instance types for this region
+        # Get all instance types for this region
         all_instance_types = []
         itypes_paginator = ec2_region.get_paginator('describe_instance_types')
         for page in itypes_paginator.paginate():
@@ -63,7 +63,7 @@ def main():
         all_instance_types = list(set(all_instance_types))
         print(f"Found {len(all_instance_types)} instance types in region {region}")
 
-        # 3. Fetch spot prices for all instance types
+        # Fetch spot prices for these instance types
         batch_size = 100
         inserted_count_region = 0
 
@@ -79,13 +79,14 @@ def main():
                 PaginationConfig={'PageSize': 1000}
             ):
                 spot_prices = page.get('SpotPriceHistory', [])
+                # Transform the data
                 transformed_data = [
                     {
                         'region': region,
                         'instance_type': entry['InstanceType'],
-                        'spot_price': float(entry['SpotPrice']),
-                        'availability_zone': entry['AvailabilityZone'],
+                        'spot_price_eur': float(entry['SpotPrice']),
                         'timestamp': entry['Timestamp'],
+                        'hour': entry['Timestamp'].hour, # later easier to compare to other days
                         'fetched_at': datetime.now(timezone.utc)
                     }
                     for entry in spot_prices
@@ -98,7 +99,7 @@ def main():
         print(f"Inserted {inserted_count_region} spot price records for region {region}.")
         inserted_count_total += inserted_count_region
 
-    print(f"Inserted a total of {inserted_count_total} spot price records across all regions.")
+    print(f"Inserted a total of {inserted_count_total} spot price records across all specified regions.")
 
 if __name__ == "__main__":
     main()
