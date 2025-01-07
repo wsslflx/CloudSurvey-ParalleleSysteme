@@ -76,4 +76,10 @@ def min_cost_instance(provider, instance, duration, region):
 
     return costs_slot[0]
 
+def one_job_complete(list, provider, region):
+    costs_slot_time =[]
+    for instance in list:
+        costs_slot_time.append([min_cost_instance(provider, list[0], list[1], region), list[1]]) # list[1] should be the duration
+    return costs_slot_time
+
 
