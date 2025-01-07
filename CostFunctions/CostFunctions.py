@@ -64,7 +64,6 @@ def get_hour_combinations(duration):
 
     return combinations
 
-# import [[instance, time, provider]]
 def min_cost_instance(provider, instance, duration, region):
     costs_slot = []
     costsPerHour = get_all_instancePriceperHour(provider, instance, region)
@@ -75,6 +74,7 @@ def min_cost_instance(provider, instance, duration, region):
     costs_slot.sort(key=lambda x: x[0])
 
     return costs_slot[0]
+
 
 def one_job_complete(list, provider, region):
     costs_slot_time =[]
