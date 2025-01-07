@@ -62,7 +62,11 @@ def get_hour_combinations(duration):
     combinations = []
 
     for i in range(len(numbers)):
-        combination = [numbers[i], numbers[(i + 1) % len(numbers)], numbers[(i + 2) % len(numbers)]]
+        m = 0
+        combination = []
+        while m < duration:
+            combination.append(numbers[(i + m) % len(numbers)])
+            m += 1
         combinations.append(combination)
 
     return combinations
@@ -120,6 +124,7 @@ def calculate_konfidenzintervall(list, konfidenzgrad):
 
     return [lower_bound, mean, upper_bound]
 
-
+def second_to_hour(seconds):
+    return seconds / 3600
 
 # prices = get_instancePriceperHour("Azure", "FX48-12mds v2 Spot", 17, "germanynorth")
