@@ -2,6 +2,10 @@ from pymongo import MongoClient
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import requests
+import numpy as np
+from scipy.stats import t
+
 
 load_dotenv()
 
@@ -40,9 +44,8 @@ def get_instancePriceperHour(provider, instance, hour, region):
     if provider == "AWS":
         list = fetch_instance_prices("aws_spot_prices_db", "aws_spot_prices", instance, hour, region)
     prices = [doc['spot_price'] for doc in list]
-    prices.sort()
 
-    return prices[int(len(prices) / 2)]
+    return prices
 
 # get prices for all hours of a instance, provider, region and return it in list
 def get_all_instancePriceperHour(provider, instance, region):
@@ -79,21 +82,44 @@ def min_cost_instance(provider, instance, duration, region):
 def one_job_complete(list, provider, region):
     costs_slot_time =[]
     for instance in list:
-        costs_slot_time.append([min_cost_instance(provider, list[0], list[1], region), list[1]]) # list[1] should be the duration
+        costs_slot_time.append([min_cost_instance(provider, instance[0], instance[1], region), instance[1]]) # list[1] should be the duration
     return costs_slot_time
 
 
-# Connect to your MongoDB Atlas cluster
-client = MongoClient(connection_string)
+def request_into_list():
+    response = requests.post(
+        "http://localhost:8080/simulate/aws?cloudletLength=10000",
+        json={"key": "value"} # Request body
+    )
+    """
+    {
+        "instance_name": "t2.micro",
+        "execution_time": 123.45
+    }
+    """
+    for item in response.json():
+        list.append([item[0], item[1]])
 
-# Select your database and collection
-db = client["aws_spot_prices_db"]
-collection = db["aws_spot_prices"]
-
-# Get all unique values for the field
-unique_values = collection.distinct("region")
-
-# Print the unique values
-print(unique_values)
+    return list
 
 
+def calculate_konfidenzintervall(list, konfidenzgrad):
+    mean = np.mean(list)  # Mittelwert
+    std_dev = np.std(list, ddof=1)  # Standardabweichung (ddof=1 für Stichprobe)
+    n = len(list)  # Stichprobengröße
+    standard_error = std_dev / np.sqrt(n)  # Standardfehler
+
+    list.sort()
+    # Kritischer t-Wert für 95% Konfidenzintervall und df = n-1
+    alpha = 1 - konfidenzgrad / 100
+    t_value = t.ppf(1 - alpha, df=n - 1)
+
+    # Konfidenzintervall
+    lower_bound = max(mean - t_value * standard_error, list[0])
+    upper_bound = min(mean + t_value * standard_error, list[len(list)- 1])
+
+    return [lower_bound, mean, upper_bound]
+
+
+
+# prices = get_instancePriceperHour("Azure", "FX48-12mds v2 Spot", 17, "germanynorth")
