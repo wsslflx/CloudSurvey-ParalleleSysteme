@@ -83,3 +83,17 @@ def one_job_complete(list, provider, region):
     return costs_slot_time
 
 
+# Connect to your MongoDB Atlas cluster
+client = MongoClient(connection_string)
+
+# Select your database and collection
+db = client["aws_spot_prices_db"]
+collection = db["aws_spot_prices"]
+
+# Get all unique values for the field
+unique_values = collection.distinct("region")
+
+# Print the unique values
+print(unique_values)
+
+
