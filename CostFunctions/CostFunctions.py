@@ -49,7 +49,7 @@ def get_all_instancePriceperHour(provider, instance, region):
     numbers = list(range(24))
     costs = []
     for number in numbers:
-        price = get_instancePriceperHour(provider, instance, numbers, region)
+        price = get_instancePriceperHour(provider, instance, number, region)
         costs.append(price)
 
     return costs

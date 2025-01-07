@@ -63,9 +63,6 @@ def fetch_retail_prices(params):
     return prices
 
 def insert_spot_price(client, database_name, collection_name, spot_price_data):
-    """
-    Insert a single spot price record into the specified MongoDB collection.
-    """
     try:
         db = client[database_name]
         collection = db[collection_name]
@@ -76,16 +73,30 @@ def insert_spot_price(client, database_name, collection_name, spot_price_data):
     except Exception as e:
         logging.error(f"Error inserting document: {e}")
 
-def main():
+def insert_spot_prices_bulk(client, database_name, collection_name, spot_prices):
+    if not spot_prices:
+        logging.info("No data to insert.")
+        return
 
+    try:
+        db = client[database_name]
+        collection = db[collection_name]
+        result = collection.insert_many(spot_prices, ordered=False)
+        logging.info(f"Inserted {len(result.inserted_ids)} documents.")
+    except pymongo.errors.BulkWriteError as bwe:
+        logging.warning(f"Bulk write error: {bwe.details}")
+    except Exception as e:
+        logging.error(f"Error during bulk insert: {e}")
+
+
+def main():
     client = connect_to_mongodb(CONNECTION_STRING)
     if not client:
         return
 
     # Define initial parameters for the API request
-    # (Only fetching data for certain EU regions and 'Spot' meterName entries)
     params = {
-        '$top': 1000,  # Adjusted to match API's maximum allowed value
+        '$top': 1000,
         'currencyCode': 'EUR',
         '$filter': (
             "serviceFamily eq 'Compute' and "
@@ -114,22 +125,28 @@ def main():
     all_prices = fetch_retail_prices(params)
     logging.info(f"Total prices fetched: {len(all_prices)}")
 
-    # Transform and insert only the fields we want into MongoDB
+    # Transform and batch the data
+    batch_size = 1000  # Adjust batch size based on your needs and MongoDB configuration
+    batch = []
     for item in all_prices:
         current_ts = datetime.now(timezone.utc)
         transformed_data = {
-            # region
             'region': item.get('armRegionName', ''),
-            # instance_type
             'instance_type': item.get('meterName', ''),
-            # spot_price
             'spot_price': item.get('retailPrice', 0),
-            # timestamp
             'timestamp': current_ts,
-            # hour
             'hour': current_ts.hour
         }
-        insert_spot_price(client, "AzureSpotPricesDB", "SpotPrices", transformed_data)
+        batch.append(transformed_data)
+
+        # Insert batch into MongoDB
+        if len(batch) >= batch_size:
+            insert_spot_prices_bulk(client, "AzureSpotPricesDB", "SpotPrices", batch)
+            batch.clear()  # Clear the batch after insertion
+
+    # Insert any remaining data
+    if batch:
+        insert_spot_prices_bulk(client, "AzureSpotPricesDB", "SpotPrices", batch)
 
     client.close()
     logging.info("MongoDB connection closed.")
