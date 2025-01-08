@@ -197,3 +197,29 @@ list_test = [["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 3500]]
 # [[0.27033597423115385, 0.31099333333333334, 0.373436772041086, 1, 10.13888888888889], 'E2s v5 Spot']]
 
 print(one_job_complete(list_test, "Azure", "germanynorth", 95))
+
+# AWS Regions:
+aws_regions = [
+    'eu-central-1', 'eu-west-1', 'eu-west-2',
+    'eu-west-3', 'eu-north-1',
+]
+
+# Azure Regions:
+azure_regions = [
+    'westeurope', 'germanywestcentral', 'northeurope',
+    'swedencentral', 'uksouth', 'francecentral',
+    'italynorth', 'norwayeast', 'polandcentral', 'spaincentral',
+    'switzerlandnorth', 'europe', 'francesouth',
+    'norwaywest', 'switzerlandwest', 'ukwest',
+    'germanynorth'
+]
+def main():
+    provider = "Azure"
+    list = list_test
+    konfidenzgrad = 95
+
+    results = []
+
+    if provider == "Azure":
+        for region in azure_regions:
+            results.append(one_job_complete(list, provider, region, konfidenzgrad))
