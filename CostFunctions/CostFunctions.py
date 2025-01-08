@@ -8,11 +8,14 @@ from scipy.stats import t
 
 
 load_dotenv()
-
 connection_string = os.getenv('MONGODB_URI')
+client = MongoClient(connection_string)
+
+def get_database(db_name):
+    return client[db_name]
+
 def fetch_instance_prices(db_name, collection_name,
                           instance_type, hour, region):
-    client = MongoClient(connection_string)
     db = client[db_name]
     collection = db[collection_name]
 
@@ -25,7 +28,6 @@ def fetch_instance_prices(db_name, collection_name,
     cursor = collection.find(query).sort("timestamp", 1)
 
     results = list(cursor)
-    client.close()
 
     return results
 
@@ -88,6 +90,7 @@ def cost_one_job(priceList, hourCombination, duration):
 def get_instancePriceperHour(provider, instance, hour, region):
     list = []
     if provider == "Azure":
+        print(instance, hour, region)
         list = fetch_instance_prices("AzureSpotPricesDB", "SpotPrices", instance, hour, region)
     if provider == "AWS":
         list = fetch_instance_prices("aws_spot_prices_db", "aws_spot_prices", instance, hour, region)
@@ -97,6 +100,7 @@ def get_instancePriceperHour(provider, instance, hour, region):
 
 # get prices for all hours of a instance, provider, region and return it in list
 def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad):
+    """
     numbers = list(range(24))
     costs = []
     for number in numbers:
@@ -106,6 +110,43 @@ def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad):
         costs.append(konfidenz_prices)
 
     return costs
+    """
+    if provider == "Azure":
+        db = get_database("AzureSpotPricesDB")
+        collection_name = "SpotPrices"
+    elif provider == "AWS":
+        db = get_database("aws_spot_prices_db")
+        collection_name = "aws_spot_prices"
+
+    docs = fetch_all_hours_prices(db, collection_name, instance, region)
+
+    # Bucket the prices by hour
+    prices_by_hour = {h: [] for h in range(24)}  # dict of hour -> list of prices
+    for doc in docs:
+        hour = doc['hour']
+        spot_price = doc['spot_price']
+        prices_by_hour[hour].append(spot_price)
+
+    costs = []
+    for h in range(24):
+        price_list = prices_by_hour[h]
+        if price_list:
+            konfidenz_prices = calculate_konfidenzintervall(price_list, konfidenzgrad)
+        else:
+            konfidenz_prices = [0, 0, 0]  # or handle empty data gracefully
+        costs.append(konfidenz_prices)
+
+    return costs
+
+def fetch_all_hours_prices(db, collection_name, instance_type, region):
+    collection = db[collection_name]
+    query = {
+        "instance_type": instance_type,
+        "region": region
+    }
+    cursor = collection.find(query).sort("timestamp", 1)
+
+    return list(cursor)
 
 def get_hour_combinations(duration):
     numbers = list(range(24)) # 0 to 23
@@ -131,7 +172,7 @@ def min_cost_instance(provider, instance, duration, region, konfidenzgrad):
 
     for timeSlot in hour_combinations:
         cost_min, cost_mean, cost_max, startTime = cost_one_job(costsPerHour, timeSlot, duration)
-        costs_slot.append([cost_min, cost_mean, cost_max, startTime, duration])
+        costs_slot.append([cost_min, cost_mean, cost_max, startTime, duration, region])
     costs_slot.sort(key=lambda x: x[2])
 
     first_positive = next((row for row in costs_slot if row[1] > 0), None) #if no spot available cost = 0 -> need Filter
@@ -182,13 +223,20 @@ def second_to_hour(seconds):
     return seconds / 3600
 
 # input list: [instance, duration in s]
-def one_job_complete(list, provider, region, konfidenzgrad):
+def one_job_complete(list, provider, regions, konfidenzgrad):
     costs_slot_time =[]
+    first_positive = []
     for instance in list:
         duration = second_to_hour(instance[1])
-        min_cost = min_cost_instance(provider, instance[0], duration, region, konfidenzgrad)
-        costs_slot_time.append([min_cost, instance[0]])
-    return costs_slot_time
+        for region in regions:
+            print(region)
+            min_cost = min_cost_instance(provider, instance[0], duration, region, konfidenzgrad)
+            costs_slot_time.append([min_cost, instance[0]])
+
+        sorted_costs_slot_time = sorted(costs_slot_time, key=lambda x: x[0][1] if x[0] else float('inf'))
+        first_positive.append(next((item for item in sorted_costs_slot_time if item[0] and item[0][1] > 0), None))
+
+    return first_positive
 
 
 # prices = get_instancePriceperHour("Azure", "FX48-12mds v2 Spot", 17, "germanynorth")
@@ -196,7 +244,7 @@ list_test = [["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 3500]]
 # [[[2.550947769061363, 2.708583270833333, 2.9049772231550968, 3, 1.1116666666666666], 'FX48-12mds v2 Spot'],
 # [[0.27033597423115385, 0.31099333333333334, 0.373436772041086, 1, 10.13888888888889], 'E2s v5 Spot']]
 
-print(one_job_complete(list_test, "Azure", "germanynorth", 95))
+
 
 # AWS Regions:
 aws_regions = [
@@ -221,5 +269,9 @@ def main():
     results = []
 
     if provider == "Azure":
-        for region in azure_regions:
-            results.append(one_job_complete(list, provider, region, konfidenzgrad))
+        results.append(one_job_complete(list, provider, azure_regions, konfidenzgrad))
+    return results
+
+print(main())
+
+client.close()
