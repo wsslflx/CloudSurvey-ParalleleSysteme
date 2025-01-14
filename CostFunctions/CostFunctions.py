@@ -229,7 +229,6 @@ def one_job_complete(list, provider, regions, konfidenzgrad):
     for instance in list:
         duration = second_to_hour(instance[1])
         for region in regions:
-            print(region)
             min_cost = min_cost_instance(provider, instance[0], duration, region, konfidenzgrad)
             costs_slot_time.append([min_cost, instance[0]])
 
@@ -238,13 +237,65 @@ def one_job_complete(list, provider, regions, konfidenzgrad):
 
     return first_positive
 
+def azure_instance_name(input_string):
+    if input_string.startswith("Standard"):
+        input_string = input_string[len("Standard"):]
+        input_string = input_string.replace("_", " ")
+        input_string += " spot"
+    return input_string
 
-# prices = get_instancePriceperHour("Azure", "FX48-12mds v2 Spot", 17, "germanynorth")
-list_test = [["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 3500]]
-# [[[2.550947769061363, 2.708583270833333, 2.9049772231550968, 3, 1.1116666666666666], 'FX48-12mds v2 Spot'],
-# [[0.27033597423115385, 0.31099333333333334, 0.373436772041086, 1, 10.13888888888889], 'E2s v5 Spot']]
+def generate_Output(print_result, konfidenzgrad):
+    print("Expected Price: " + str(print_result[0][0][1]) + "€")
+    print("Price Range: " + str(print_result[0][0][0]) + "€" + " - " + str(print_result[0][0][2]) + "€" + "in " + str(konfidenzgrad) + "% of cases")
+    print("Expected Time needed: " + str(print_result[0][0][4]) + " hours")
+    print("Best Starting Time: " + str(print_result[0][0][3]))
+    print("Best Instance: " + str(print_result[0][1]) + "in Region: " + str(print_result[0][0][5]))
+
+def dimensions_test(list):
+    np_list = np.array(list)
+    return np_list.ndim
+def multiple_jobs(provider, jobs, regions, konfidenzgrad):
+    results_multiple_jobs = []
+    if dimensions_test(jobs) == 3:
+        min_cost = 0
+        mean_cost = 0
+        max_cost = 0
+        duration = 0
+        for job in jobs:
+            result_single = []
+            if provider == "Azure":
+                for element in job:
+                    element[0] = azure_instance_name(element[0])
+                result_single = (one_job_complete(job, provider, regions, konfidenzgrad))
+            elif provider == "AWS":
+                result_single = (one_job_complete(list, provider, aws_regions, konfidenzgrad))
+
+            results_single_sorted = sorted(result_single, key=lambda x: x[0][1])
+            results_multiple_jobs.append(results_single_sorted[0])
+
+        for element in results_multiple_jobs:
+            min_cost += element[0][0]
+            mean_cost += element[0][1]
+            max_cost += element[0][2]
+            duration += element[0][4]
+        total_cost = (min_cost, mean_cost, max_cost, duration)
+        return [total_cost, results_multiple_jobs]
+
+    elif dimensions_test(jobs) == 2: # just a single job
+        result_single = []
+        if provider == "Azure":
+            for element in jobs:
+                element[0] = azure_instance_name(element[0])
+            result_single = (one_job_complete(jobs, provider, regions, konfidenzgrad))
+        elif provider == "AWS":
+            result_single = (one_job_complete(list, provider, aws_regions, konfidenzgrad))
+
+        results_single_sorted = sorted(result_single, key=lambda x: x[0][1])
+        results_multiple_jobs = (results_single_sorted[0])
+    return results_multiple_jobs
 
 
+list_test = [["FX48-12mds v2 Spot", 4002]],[["E2s v5 Spot", 3500]]
 
 # AWS Regions:
 aws_regions = [
@@ -265,13 +316,11 @@ def main():
     provider = "Azure"
     list = list_test
     konfidenzgrad = 95
+    results_job = (multiple_jobs(provider, list, azure_regions, konfidenzgrad))
+    print(results_job)
 
-    results = []
+main()
 
-    if provider == "Azure":
-        results.append(one_job_complete(list, provider, azure_regions, konfidenzgrad))
-    return results
 
-print(main())
 
 client.close()
