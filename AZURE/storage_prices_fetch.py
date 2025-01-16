@@ -112,14 +112,14 @@ def fetch_transfer_prices(api_url):
     if response.status_code == 200:
         data = response.json()
 
-        destinationRegion = [
+        transfer_prices = [
             item for item in data['Items']
                 if "Data Transfer" in item.get("meterName", "") and
                 "China" not in item.get("meterName", "") and
                 "Internet" not in item.get("productName", "") and
                 "Inter-Region Data Transfer" in item.get("meterName", "")
         ]
-    return destinationRegion
+    return transfer_prices
 
 def insert_spot_prices_bulk(client, database_name, collection_name, spot_prices):
     if not spot_prices:
