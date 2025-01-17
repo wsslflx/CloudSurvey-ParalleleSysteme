@@ -26,4 +26,4 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: |
-          python main.py
+          python Azure_fetch_spot_prices.py
