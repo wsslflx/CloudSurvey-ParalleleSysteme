@@ -1,12 +1,13 @@
 import json
 import logging
 from datetime import datetime, timezone
-
+from dotenv import load_dotenv
 import pymongo
 import requests
 from pymongo import MongoClient
+import os
 
-
+load_dotenv()
 # ------------------------
 #       CONFIG / CONSTANTS
 # ------------------------
@@ -201,22 +202,22 @@ def insert_storage_prices_bulk(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    # Example usage:
     # 1) Connect to Mongo
-    client = connect_to_mongodb("your-mongodb-connection-string")
+    MongoDB_URL = os.getenv("MONGODB_URI2")
+    client = connect_to_mongodb(MongoDB_URL)
 
     if client:
         # 2) Fetch data
         storage_data = fetch_storage_prices()
-        print(storage_data)
-        #transfer_data = fetch_transfer_prices()
+        transfer_data = fetch_transfer_prices()
 
         # 3) Insert data
         """
         Datenbank name muss geändeert werden
         """
-        #insert_storage_prices_bulk(client, "AzureSpotPricesDB", "SpotPrices", storage_data)
-        #insert_spot_prices_bulk(client, "AzureSpotPricesDB", "SpotPrices", transfer_data)
+        db_name = "azure_storage_pricing_db"
+        insert_storage_prices_bulk(client, db_name, "StoragePrices", storage_data)
+        insert_storage_prices_bulk(client, db_name, "TransferPrices", transfer_data)
 
         # Close the connection if desired
         client.close()

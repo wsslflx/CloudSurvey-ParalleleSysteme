@@ -3,7 +3,6 @@ import sys
 import json
 import boto3
 from pymongo import MongoClient
-from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -127,9 +126,7 @@ def transform_ebs_data(storage_data, region):
     return transformed_data
 
 def transform_transfer_data(transfer_data, from_region, to_region):
-    """
-    Transforms raw Data Transfer pricing data into a list of documents for MongoDB.
-    """
+
     transformed_data = []
     for raw_item in transfer_data:
         product = json.loads(raw_item)
@@ -162,15 +159,16 @@ def insert_data_to_db(collection, data):
 def main():
     aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
     aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-    mongo_uri = os.getenv('MONGODB_URI')
+    mongo_uri = os.getenv('MONGODB_URI2')
 
     if not aws_access_key or not aws_secret_key or not mongo_uri:
+        print(aws_access_key, aws_secret_key, mongo_uri)
         print("Missing environment variables. Make sure AWS and MongoDB credentials are set.")
         sys.exit(1)
 
     # Connect to MongoDB
     mongo_client = MongoClient(mongo_uri)
-    db = mongo_client['aws_pricing_db']
+    db = mongo_client['aws_storage_pricing_db']
 
     # Collections
     efs_collection = db['aws_efs_prices']
