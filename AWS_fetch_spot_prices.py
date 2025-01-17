@@ -31,7 +31,7 @@ def main():
         aws_secret_access_key=aws_secret_key
     )
 
-    # Hardcode the list of European regions
+    # Hardcoded list of European regions
     regions = [
         'eu-central-1', 'eu-west-1', 'eu-west-2',
         'eu-west-3', 'eu-north-1',
