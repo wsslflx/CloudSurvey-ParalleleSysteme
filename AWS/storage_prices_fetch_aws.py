@@ -17,6 +17,9 @@ def get_pricing_client(aws_access_key, aws_secret_key):
     )
 
 def fetch_storage_pricing_data(pricing_client, service_code, region_name, product_family):
+    """
+    Returns a list of raw pricing data for the specified service_code, region_name, and product_family.
+    """
     paginator = pricing_client.get_paginator('get_products')
     pricing_data = []
 
@@ -43,34 +46,33 @@ def fetch_storage_pricing_data(pricing_client, service_code, region_name, produc
         pricing_data.extend(page['PriceList'])
 
     if not pricing_data:
-        print(f"No pricing data found for {service_code} in {region_name} ({location}).")
+        print(f"No {service_code} pricing data found for {region_name} ({location}).")
 
     return pricing_data
 
-def fetch_transfer_pricing_data(client, region, regions):
+def fetch_transfer_pricing_data(client, from_region, to_region):
+    """
+    Returns a list of raw data transfer products for the given region pair.
+    """
     try:
-        for to_region in regions:
-            if to_region != region:
-                response = client.get_products(
-                    ServiceCode='AWSDataTransfer',
-                    Filters=[
-                        {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Data Transfer'},
-                        {'Type': 'TERM_MATCH', 'Field': 'fromRegionCode', 'Value': region},
-                        {'Type': 'TERM_MATCH', 'Field': 'toRegionCode', 'Value': to_region}
-                    ],
-                    MaxResults=100
-                )
-                if not response['PriceList']:
-                    print("No products found for the given filters.")
-                else:
-                    for price in response['PriceList']:
-                        data = json.loads(price)
-                        print(json.dumps(data, indent=4))
+        response = client.get_products(
+            ServiceCode='AWSDataTransfer',
+            Filters=[
+                {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Data Transfer'},
+                {'Type': 'TERM_MATCH', 'Field': 'fromRegionCode', 'Value': from_region},
+                {'Type': 'TERM_MATCH', 'Field': 'toRegionCode', 'Value': to_region}
+            ],
+            MaxResults=100
+        )
+        return response.get('PriceList', [])
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error fetching transfer data from {from_region} to {to_region}: {e}")
+        return []
 
-
-def transform_pricing_data(pricing_data, region):
+def transform_efs_data(pricing_data, region):
+    """
+    Transforms raw EFS pricing data into a list of documents for MongoDB.
+    """
     transformed_data = []
     for price_item in pricing_data:
         product = json.loads(price_item)
@@ -81,10 +83,11 @@ def transform_pricing_data(pricing_data, region):
         if attributes.get('storageClass') == "EFS Storage":
             for term_key, term_value in terms.items():
                 for price_key, price_value in term_value['priceDimensions'].items():
-                    if "read" in price_value.get('description', 'N/A'):
+                    if "read" in price_value.get('description', 'N/A').lower():
                         description = "read"
                     else:
                         description = "write"
+
                     transformed_data.append({
                         'region': region,
                         'storageClass': attributes.get('storageClass', 'N/A'),
@@ -97,8 +100,10 @@ def transform_pricing_data(pricing_data, region):
                     })
     return transformed_data
 
-
-def transform_storage_data(storage_data, region):
+def transform_ebs_data(storage_data, region):
+    """
+    Transforms raw EBS pricing data into a list of documents for MongoDB.
+    """
     transformed_data = []
     for storage_item in storage_data:
         product = json.loads(storage_item)
@@ -121,9 +126,34 @@ def transform_storage_data(storage_data, region):
                     })
     return transformed_data
 
+def transform_transfer_data(transfer_data, from_region, to_region):
+    """
+    Transforms raw Data Transfer pricing data into a list of documents for MongoDB.
+    """
+    transformed_data = []
+    for raw_item in transfer_data:
+        product = json.loads(raw_item)
+        terms = product.get('terms', {}).get('OnDemand', {})
 
+        # Add any checks or filters you need here. For now, we store everything.
+        for term_key, term_value in terms.items():
+            for price_key, price_value in term_value['priceDimensions'].items():
+                transformed_data.append({
+                    'fromRegion': from_region,
+                    'toRegion': to_region,
+                    'description': price_value.get('description', ''),
+                    'unit': price_value.get('unit', 'N/A'),
+                    'price': float(price_value['pricePerUnit'].get('USD', '0.0')),
+                    'effectiveDate': term_value.get('effectiveDate', 'N/A'),
+                    'sku': product['product'].get('sku', 'N/A'),
+                })
+    return transformed_data
 
 def insert_data_to_db(collection, data):
+    """
+    Inserts a list of documents into the specified collection via insert_many.
+    Returns the number of inserted documents.
+    """
     if data:
         collection.insert_many(data)
         return len(data)
@@ -139,12 +169,13 @@ def main():
         sys.exit(1)
 
     # Connect to MongoDB
-    client = MongoClient(mongo_uri)
-    db = client['aws_pricing_db']
+    mongo_client = MongoClient(mongo_uri)
+    db = mongo_client['aws_pricing_db']
 
-    # Collections for EFS and EBS prices
+    # Collections
     efs_collection = db['aws_efs_prices']
     ebs_collection = db['aws_ebs_prices']
+    transfer_collection = db['aws_data_transfer_prices']  # new collection for data transfer
 
     # Hardcoded list of European regions
     regions = [
@@ -154,40 +185,46 @@ def main():
 
     pricing_client = get_pricing_client(aws_access_key, aws_secret_key)
 
-    total_inserted_efs = 0
-    total_inserted_ebs = 0
-    total_inserted_transfer = 0
+    # Prepare accumulators
+    all_efs_docs = []
+    all_ebs_docs = []
+    all_transfer_docs = []
 
+    # 1. Gather EFS & EBS data for all regions
     for region in regions:
-        fetch_transfer_pricing_data(pricing_client, region, regions)
+        print(f"Processing storage data for region: {region}")
 
-
-    for region in regions:
-        print(f"Processing region: {region}")
-
-        # Fetch and insert EFS prices
-        print(f"Fetching EFS prices for region {region}...")
+        # Fetch & transform EFS
         efs_data = fetch_storage_pricing_data(pricing_client, 'AmazonEFS', region, 'Storage')
-        transformed_efs_data = transform_pricing_data(efs_data, region)
-        inserted_efs = insert_data_to_db(efs_collection, transformed_efs_data)
-        total_inserted_efs += inserted_efs
+        transformed_efs_data = transform_efs_data(efs_data, region)
+        all_efs_docs.extend(transformed_efs_data)
 
-        # Fetch and insert EBS prices
-        print(f"Fetching EBS prices for region {region}...")
+        # Fetch & transform EBS
         ebs_data = fetch_storage_pricing_data(pricing_client, 'AmazonEC2', region, 'Storage')
-        transformed_ebs_data = transform_pricing_data(ebs_data, region)
-        inserted_ebs = insert_data_to_db(ebs_collection, transformed_ebs_data)
-        total_inserted_ebs += inserted_ebs
+        transformed_ebs_data = transform_ebs_data(ebs_data, region)
+        all_ebs_docs.extend(transformed_ebs_data)
 
-        #Fetch transfer prices
-        print(f"Fetching transfer prices for region {region}...")
-        transfer_data= fetch_transfer_pricing_data(pricing_client, region, regions)
-        transformed_transfer_data = transform_storage_data(transfer_data, region)
-        inserted_transfers = insert_data_to_db(ebs_collection, transformed_transfer_data)
-        total_inserted_transfer += inserted_transfers
+    # 2. Gather Data Transfer pricing among all region pairs
+    for from_region in regions:
+        for to_region in regions:
+            if to_region == from_region:
+                continue
+            transfer_data = fetch_transfer_pricing_data(pricing_client, from_region, to_region)
+            if not transfer_data:
+                print(f"No transfer pricing data found from {from_region} to {to_region}.")
+            transformed = transform_transfer_data(transfer_data, from_region, to_region)
+            all_transfer_docs.extend(transformed)
 
-    print(f"Inserted {total_inserted_efs} EFS price records.")
-    print(f"Inserted {total_inserted_ebs} EBS price records.")
+    # 3. Batch insert for each collection
+    inserted_efs = insert_data_to_db(efs_collection, all_efs_docs)
+    inserted_ebs = insert_data_to_db(ebs_collection, all_ebs_docs)
+    inserted_transfer = insert_data_to_db(transfer_collection, all_transfer_docs)
+
+    print(f"\n--- Insert Summary ---")
+    print(f"EFS price records inserted: {inserted_efs}")
+    print(f"EBS price records inserted: {inserted_ebs}")
+    print(f"Data Transfer records inserted: {inserted_transfer}")
+    print("Done.")
 
 if __name__ == "__main__":
     main()
