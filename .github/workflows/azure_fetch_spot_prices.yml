@@ -1,8 +1,8 @@
 name: Daily Azure Spot Price Tracker
 
 on:
-  schedule:
-    - cron: '0 * * * *'  # Runs hourly at 2 AM UTC
+  #schedule:
+  #  - cron: '0 * * * *'  # Runs hourly at 2 AM UTC
   workflow_dispatch:
 
 jobs:
