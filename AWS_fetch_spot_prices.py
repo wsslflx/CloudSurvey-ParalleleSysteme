@@ -36,7 +36,6 @@ def main():
         'eu-central-1', 'eu-west-1', 'eu-west-2',
         'eu-west-3', 'eu-north-1',
     ]
-
     inserted_count_total = 0
 
     start_time = datetime.now(timezone.utc) - timedelta(hours=1)
