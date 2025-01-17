@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/AzureApi.iml" filepath="$PROJECT_DIR$/.idea/AzureApi.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/CloudSurvey-ParalleleSysteme.iml" filepath="$PROJECT_DIR$/.idea/CloudSurvey-ParalleleSysteme.iml" />
     </modules>
   </component>
 </project>
