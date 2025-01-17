@@ -125,7 +125,6 @@ def main():
     all_prices = fetch_retail_prices(params)
     logging.info(f"Total prices fetched: {len(all_prices)}")
 
-    # Transform and batch the data
     batch_size = 1000  # Adjust batch size based on your needs and MongoDB configuration
     batch = []
     for item in all_prices:
