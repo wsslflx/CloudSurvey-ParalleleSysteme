@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import t
 
 def calculate_konfidenzintervall(list, konfidenzgrad):
     if len(list) > 1:
