@@ -26,3 +26,5 @@ def calculate_konfidenzintervall(list, konfidenzgrad):
 def second_to_hour(seconds):
     return seconds / 3600
 
+def gb_to_gib(volume):
+    return float(volume) / 1.074

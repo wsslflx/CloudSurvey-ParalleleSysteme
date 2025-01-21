@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
-from .math_operations import calculate_konfidenzintervall
+from CloudSurvey_Package.math_operations import calculate_konfidenzintervall
 
 load_dotenv()
 connection_string = os.getenv('MONGODB_URI')
@@ -47,7 +47,29 @@ def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, clie
 
     return costs
 
-def fetch_storage_prices(provider, type, client):
+def fetch_storage_prices(provider, skuName, client):
     if provider == "Azure":
+        print(provider, skuName)
         db = get_database("azure_storage_pricing_db", client)
-        collection_name = "storage_pricing"
+        collection_name = "StoragePrices"
+        query = {
+            "skuName": {"$regex": f"^{skuName}$", "$options": "i"},  # Case-insensitive match
+            "unitOfMeasure": "1/Month",
+        }
+        projection = {"_id": 0, "region": 1, "skuName": 1, "price": 1}
+        try:
+            # Fetch results with query and projection
+            cursor = db[collection_name].find(query, projection).sort("timestamp", 1)
+
+            # Convert to a list of dictionaries and extract required fields
+            results = list(cursor)
+            output = [{"region": doc["region"], "skuName": doc["skuName"], "price": doc["price"]} for doc in results]
+
+            if not results:
+                print("No documents found.")
+            return output
+        except Exception as e:
+            print(f"Error querying the database: {e}")
+            return []
+
+        return []

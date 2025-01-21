@@ -106,6 +106,15 @@ def fetch_storage_prices(api_url: str = AZURE_PRICES_API) -> list[dict]:
             and not item.get("reservationTerm")
         )
     ]
+    managed = [
+        item
+        for item in all_items
+        if (
+                ("Managed Disks" in item.get("productName", ""))
+                and not item.get("reservationTerm")
+        )
+    ]
+    print(json.dumps(managed, indent=4))
 
     logging.info(f"Fetched {len(filtered)} storage price items.")
     return filtered
@@ -216,8 +225,8 @@ if __name__ == "__main__":
         Datenbank name muss geändeert werden
         """
         db_name = "azure_storage_pricing_db"
-        insert_storage_prices_bulk(client, db_name, "StoragePrices", storage_data)
-        insert_storage_prices_bulk(client, db_name, "TransferPrices", transfer_data)
+        #insert_storage_prices_bulk(client, db_name, "StoragePrices", storage_data)
+        #insert_storage_prices_bulk(client, db_name, "TransferPrices", transfer_data)
 
         # Close the connection if desired
         client.close()
