@@ -49,7 +49,6 @@ def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, clie
 
 def fetch_storage_prices(provider, skuName, client):
     if provider == "Azure":
-        print(provider, skuName)
         db = get_database("azure_storage_pricing_db", client)
         collection_name = "StoragePrices"
         query = {
@@ -72,4 +71,54 @@ def fetch_storage_prices(provider, skuName, client):
             print(f"Error querying the database: {e}")
             return []
 
+    if provider == "AWS":
+        db = get_database("aws_storage_pricing_db", client)
+        collection_name = "aws_ebs_prices"
+        query = {
+            "description": {"$regex": skuName, "$options": "i"},  # Case-insensitive match -> Sku Name here gp3 or gp2
+        }
+        projection = {"_id": 0, "region": 1, "description" : 1, "price": 1}
+    try:
+        # Fetch results with query and projection
+        cursor = db[collection_name].find(query, projection).sort("timestamp", 1)
+        # Convert to a list of dictionaries and extract required fields
+        results = list(cursor)
+        output = [{"region": doc["region"], "description": doc["description"], "price": doc["price"]} for doc in results]
+
+        if not results:
+            print("No documents found.")
+        return output
+    except Exception as e:
+        print(f"Error querying the database: {e}")
         return []
+
+    return []
+
+def fetch_transfer_prices(provider, fromRegion, toRegion, client):
+    if provider == "AWS":
+        db = get_database("aws_storage_pricing_db", client)
+        collection_name = "aws_ebs_prices"
+        query = {
+            "fromRegion": fromRegion,
+            "toRegion": toRegion
+        }
+        projection = {"_id": 0, "price": 1}
+
+        try:
+            # Fetch results with query and projection
+            cursor = db[collection_name].find(query, projection).sort("timestamp", 1)
+
+            # Convert to a list of dictionaries and extract required fields
+            results = list(cursor)
+            output = [{"price": doc["price"]} for doc in results]
+
+            if not results:
+                print("No documents found.")
+            return output
+        except Exception as e:
+            print(f"Error querying the database: {e}")
+            return []
+"""
+client = MongoClient(connection_string2)
+print(fetch_storage_prices("AWS", "gp3", client))
+"""

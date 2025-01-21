@@ -82,6 +82,7 @@ def transform_efs_data(pricing_data, region):
         if attributes.get('storageClass') == "EFS Storage":
             for term_key, term_value in terms.items():
                 for price_key, price_value in term_value['priceDimensions'].items():
+                    print(price_value.get('description'))
                     if "read" in price_value.get('description', 'N/A').lower():
                         description = "read"
                     else:
@@ -166,14 +167,13 @@ def main():
         print("Missing environment variables. Make sure AWS and MongoDB credentials are set.")
         sys.exit(1)
 
-    # Connect to MongoDB
     mongo_client = MongoClient(mongo_uri)
     db = mongo_client['aws_storage_pricing_db']
 
     # Collections
     efs_collection = db['aws_efs_prices']
     ebs_collection = db['aws_ebs_prices']
-    transfer_collection = db['aws_data_transfer_prices']  # new collection for data transfer
+    transfer_collection = db['aws_data_transfer_prices']
 
     # Hardcoded list of European regions
     regions = [
@@ -195,7 +195,7 @@ def main():
         # Fetch & transform EFS
         efs_data = fetch_storage_pricing_data(pricing_client, 'AmazonEFS', region, 'Storage')
         transformed_efs_data = transform_efs_data(efs_data, region)
-        all_efs_docs.extend(transformed_efs_data)
+        all_efs_docs.extendx(transformed_efs_data)
 
         # Fetch & transform EBS
         ebs_data = fetch_storage_pricing_data(pricing_client, 'AmazonEC2', region, 'Storage')
@@ -213,6 +213,7 @@ def main():
             transformed = transform_transfer_data(transfer_data, from_region, to_region)
             all_transfer_docs.extend(transformed)
 
+    """
     # 3. Batch insert for each collection
     inserted_efs = insert_data_to_db(efs_collection, all_efs_docs)
     inserted_ebs = insert_data_to_db(ebs_collection, all_ebs_docs)
@@ -223,6 +224,6 @@ def main():
     print(f"EBS price records inserted: {inserted_ebs}")
     print(f"Data Transfer records inserted: {inserted_transfer}")
     print("Done.")
-
+    """
 if __name__ == "__main__":
     main()
