@@ -20,6 +20,23 @@ def fetch_all_hours_prices(db, collection_name, instance_type, region):
 
     return list(cursor)
 
+def fetch_instance_prices(db_name, collection_name,
+                          instance_type, hour, region, client):
+    db = client[db_name]
+    collection = db[collection_name]
+
+    query = {
+        "instance_type": instance_type,
+        "hour": hour,
+        "region": region
+    }
+
+    cursor = collection.find(query).sort("timestamp", 1)
+
+    results = list(cursor)
+
+    return results
+
 def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, client):
     if provider == "Azure":
         db = get_database("AzureSpotPricesDB", client)

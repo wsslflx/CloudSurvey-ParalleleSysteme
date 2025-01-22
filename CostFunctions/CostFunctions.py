@@ -100,17 +100,6 @@ def get_instancePriceperHour(provider, instance, hour, region):
 
 # get prices for all hours of a instance, provider, region and return it in list
 def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad):
-    """
-    numbers = list(range(24))
-    costs = []
-    for number in numbers:
-        price = get_instancePriceperHour(provider, instance, number, region)
-        if price is not None:
-            konfidenz_prices = calculate_konfidenzintervall(price, konfidenzgrad)
-        costs.append(konfidenz_prices)
-
-    return costs
-    """
     if provider == "Azure":
         db = get_database("AzureSpotPricesDB")
         collection_name = "SpotPrices"
@@ -328,5 +317,4 @@ def main():
 main()
 
 
-#test 2
 client.close()
