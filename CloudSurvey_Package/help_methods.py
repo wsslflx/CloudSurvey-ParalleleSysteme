@@ -41,3 +41,29 @@ def request_into_list():
 
     return list
 
+def formatting_compute_cost_multiple(single_cost):
+    formatted_costs = []
+    for single in single_cost:
+        lowerLimitPrice = single[0][0]
+        meanPrice = single[0][1]
+        upperLimitPrice = single[0][2]
+        starting_time = single[0][3]
+        duration = single[0][4]
+        region = single[0][5]
+        instance = single[1]
+        formatted_costs.append(
+            [
+                lowerLimitPrice,
+                meanPrice,
+                upperLimitPrice,
+                starting_time,
+                duration,
+                region,
+                instance
+            ]
+        )
+    return formatted_costs
+
+def formatting_compute_cost_single(single_cost):
+    flat_list = [element for item in single_cost for element in (item if isinstance(item, list) else [item])]
+    return flat_list

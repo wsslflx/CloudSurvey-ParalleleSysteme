@@ -1,4 +1,4 @@
-from CloudSurvey_Package.help_methods import dimensions_test, azure_instance_name, get_hour_combinations
+from CloudSurvey_Package.help_methods import *
 import CloudSurvey_Package.constants as constants
 from CloudSurvey_Package.math_operations import second_to_hour
 from CloudSurvey_Package.db_operations import fetch_instance_prices, get_all_instancePriceperHour
@@ -113,7 +113,6 @@ def multiple_jobs(provider, jobs, konfidenzgrad, client):
             result_single = []
             if provider == "Azure":
                 for element in job:
-                    print(element)
                     element[0] = azure_instance_name(element[0])
                 result_single = (one_job_complete(job, provider, azure_regions, konfidenzgrad, client))
             elif provider == "AWS":
@@ -129,7 +128,10 @@ def multiple_jobs(provider, jobs, konfidenzgrad, client):
             max_cost += element[0][2]
             duration += element[0][4]
         total_cost = (min_cost, mean_cost, max_cost, duration)
-        return [total_cost, results_multiple_jobs]
+        print(results_multiple_jobs)
+        single_costs = formatting_compute_cost_multiple(results_multiple_jobs)
+        print(single_costs)
+        return total_cost, single_costs
 
     elif dimensions_test(jobs) == 2: # just a single job
         result_single = []
@@ -142,7 +144,9 @@ def multiple_jobs(provider, jobs, konfidenzgrad, client):
 
         results_single_sorted = sorted(result_single, key=lambda x: x[0][1])
         results_multiple_jobs = (results_single_sorted[0])
-    return results_multiple_jobs
+        single_costs = formatting_compute_cost_single(results_multiple_jobs)
+        total_costs = [single_costs[0], single_costs[1], single_costs[2], single_costs[4]]
+        return total_costs, single_costs
 
 #Testing
 """

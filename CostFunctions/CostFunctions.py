@@ -311,7 +311,7 @@ def main():
     provider = "Azure"
     list = list_test
     konfidenzgrad = 95
-    results_job = (multiple_jobs(provider, list, azure_regions, konfidenzgrad))
+    results_job = (multiple_jobs(provider, list, konfidenzgrad))
     print(results_job)
 
 main()

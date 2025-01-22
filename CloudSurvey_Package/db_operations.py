@@ -1,11 +1,5 @@
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
-from CloudSurvey_Package.math_operations import calculate_konfidenzintervall
 
-load_dotenv()
-connection_string = os.getenv('MONGODB_URI')
-connection_string2 = os.getenv('MONGODB_URI2')
+from CloudSurvey_Package.math_operations import calculate_konfidenzintervall
 
 def get_database(db_name, client):
     return client[db_name]
@@ -136,6 +130,15 @@ def fetch_transfer_prices(provider, fromRegion, toRegion, client):
             print(f"Error querying the database: {e}")
             return []
 """
+
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv 
+
+load_dotenv()
+connection_string = os.getenv('MONGODB_URI')
+connection_string2 = os.getenv('MONGODB_URI2')
+
 client = MongoClient(connection_string2)
 print(fetch_storage_prices("AWS", "gp3", client))
 """
