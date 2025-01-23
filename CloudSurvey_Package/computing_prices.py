@@ -128,9 +128,7 @@ def multiple_jobs(provider, jobs, konfidenzgrad, client):
             max_cost += element[0][2]
             duration += element[0][4]
         total_cost = (min_cost, mean_cost, max_cost, duration)
-        print(results_multiple_jobs)
         single_costs = formatting_compute_cost_multiple(results_multiple_jobs)
-        print(single_costs)
         return total_cost, single_costs
 
     elif dimensions_test(jobs) == 2: # just a single job

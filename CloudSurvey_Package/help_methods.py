@@ -67,3 +67,38 @@ def formatting_compute_cost_multiple(single_cost):
 def formatting_compute_cost_single(single_cost):
     flat_list = [element for item in single_cost for element in (item if isinstance(item, list) else [item])]
     return flat_list
+
+def generate_Output(total_cost, single_costs, storage_cost, konfidenzgrad, multiple, provider):
+
+    if provider == "Azure":
+        currency = "€"
+    else:
+        currency = "$"
+
+    print("Total Costs for " + provider + " :")
+    print("Expected Costs: " + str(total_cost[1]) + " " + currency)
+    print("Price Range: " + str(total_cost[0]) + " " + currency + " - " + str(total_cost[2]) + currency + " in " + str(konfidenzgrad) + "% of cases")
+    print("Expected Time needed: " + str(total_cost[3]) + " hours")
+    print()
+    print("Storage Cost: ")
+    print("Expected Costs: " + str(storage_cost[0]) + " " + currency)
+    print("Best Region: " + str(storage_cost[1]))
+    print()
+    if multiple:
+        for index, job in enumerate(single_costs):
+            print("Jobs #" + str(index))
+            print("Best Instance: " + str(job[6]) + " in Region: " + str(job[5]))
+            print("Expected Price: " + str(job[1]) + " " + currency)
+            print("Price Range: " + str(job[0]) + " " + currency + " - " + str(job[2]) + " " + currency + " in " + str(
+                konfidenzgrad) + "% of cases")
+            print("Expected Time needed: " + str(job[4]) + " hours")
+            print("Best Starting Time: " + str(job[3]))
+            print()
+    else:
+        print("Jobs #1")
+        print("Best Instance: " + str(single_costs[6]) + "in Region: " + str(single_costs[5]))
+        print("Expected Price: " + str(single_costs[1]) + " " + currency)
+        print("Price Range: " + str(single_costs[0]) + " " + currency + " - " + str(single_costs[2]) + " " + currency + " in " + str(
+            konfidenzgrad) + "% of cases")
+        print("Expected Time needed: " + str(single_costs[4]) + " hours")
+        print("Best Starting Time: " + str(single_costs[3]))

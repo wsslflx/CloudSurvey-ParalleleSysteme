@@ -71,9 +71,6 @@ def get_storage_cost(provider, volume, premium, lrs, client):
 def calculate_storage_price(price_region, duration, provider):
     if provider == "Azure":
         hour_price = (price_region["price"] / 7300)
-        print(hour_price)
-        print(math.ceil(duration))
-        print((hour_price * math.ceil(duration)))
         return (hour_price * math.ceil(duration))
     elif provider == "AWS":
         hour_price = (price_region["price"] / 7300)
