@@ -146,6 +146,8 @@ def multiple_jobs(provider, jobs, konfidenzgrad, client):
         total_costs = [single_costs[0], single_costs[1], single_costs[2], single_costs[4]]
         return total_costs, single_costs
 
+
+
 #Testing
 """
 import os

@@ -1,11 +1,7 @@
 import math
 from CloudSurvey_Package.math_operations import gb_to_gib
 from CloudSurvey_Package.db_operations import fetch_storage_prices, fetch_transfer_prices
-"""
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
-"""
+
 
 def get_transfer_cost(fromRegion, toRegion, provider, client):
     if toRegion == fromRegion:
