@@ -1,10 +1,9 @@
-from pulp import LpProblem, LpMinimize, LpVariable, lpSum, LpBinary, PULP_CBC_CMD
-
-import CloudSurvey_Package.constants as constants
 from CloudSurvey_Package.computing_prices import get_all_instancePriceperHour, get_hour_combinations, cost_one_job
 from CloudSurvey_Package.help_methods import *
 from CloudSurvey_Package.db_operations import get_all_instancePriceperHour
-from CloudSurvey_Package.storage_prices import get_storage_cost,calculate_storage_price
+from CloudSurvey_Package.storage_prices import get_storage_cost, calculate_storage_price, get_transfer_cost
+from CloudSurvey_Package.math_operations import second_to_hour
+import CloudSurvey_Package.constants as constants
 
 
 def all_cost_instance(provider, instance, duration, region, konfidenzgrad, client):
@@ -80,14 +79,6 @@ def fill_compute_cost_map_all(provider, instance_list, regions, konfidenzgrad, c
     return compute_cost_map
 
 
-import math
-from CloudSurvey_Package.math_operations import gb_to_gib
-from CloudSurvey_Package.db_operations import (
-    fetch_storage_prices,
-    fetch_transfer_prices
-)
-from CloudSurvey_Package.math_operations import second_to_hour
-
 def fill_storage_cost_map(provider, volume, premium, lrs, client, duration_hours):
     """
     Creates a map { region: storage_cost } for *all* regions
@@ -124,6 +115,28 @@ def fill_storage_cost_map(provider, volume, premium, lrs, client, duration_hours
     return storage_cost_map
 
 
+def fill_transfer_cost_map(provider, client):
+    """
+    Creates a map of transfer costs for *all* (regionFrom, regionTo) pairs.
+    Key:   (regionFrom, regionTo)
+    Value: transfer cost per GB
+    """
+    transfer_cost_map = {}
+
+    if provider == "Azure":
+        regions = constants.azure_regions
+    else:
+        regions = constants.aws_regions
+
+    # Enumerate all region pairs
+    for region_from in regions:
+        for region_to in regions:
+            # Use your existing function to fetch cost
+            cost = get_transfer_cost(region_from, region_to, provider, client)
+            transfer_cost_map[(region_from, region_to)] = cost
+
+    return transfer_cost_map
+
 
 
 
@@ -135,7 +148,8 @@ connection_string_compute = os.getenv('MONGODB_URI')
 connection_string_storage = os.getenv('MONGODB_URI2')
 client_storage = MongoClient(connection_string_storage)
 
-print(fill_storage_cost_map("Azure", 400, True, False, client_storage, 50))
+print(fill_transfer_cost_map("AWS", client_storage))
+# print(fill_storage_cost_map("Azure", 400, True, False, client_storage, 50))
 """
 client_compute = MongoClient(connection_string_compute)
 

@@ -94,6 +94,7 @@ def calculate_complete_storage_price(provider, volume, premium, lrs, client, dur
 
     return [complete_cost_cheapestRegion, lowest_price_region["region"]]
 
+
 """
 load_dotenv()
 connection_string = os.getenv("MONGODB_URI2")
