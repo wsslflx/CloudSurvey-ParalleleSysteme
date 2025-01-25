@@ -1,7 +1,4 @@
 import pulp
-from fill_cost_maps import *
-
-import pulp
 
 def optimize_with_triple_compute(
     compute_cost_map,
@@ -74,28 +71,3 @@ def optimize_with_triple_compute(
     return model, x_var
 
 
-
-import os
-from dotenv import load_dotenv
-from pymongo import MongoClient
-load_dotenv()
-connection_string_compute = os.getenv('MONGODB_URI')
-connection_string_storage = os.getenv('MONGODB_URI2')
-client_compute = MongoClient(connection_string_compute)
-client_storage = MongoClient(connection_string_storage)
-instance_list= [["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 3500]]
-#
-compute_cost_map = fill_compute_cost_map_all("Azure", instance_list, 95, client_compute)
-print("done")
-storage_cost_map = fill_storage_cost_map("Azure", 200, True, False, instance_list, client_storage)
-print("done")
-transfer_cost_map = fill_transfer_cost_map("Azure", client_storage)
-print("done")
-
-model, x_var = (optimize_with_triple_compute(compute_cost_map, storage_cost_map, transfer_cost_map))
-print("Status:", pulp.LpStatus[model.status])
-print("Objective:", pulp.value(model.objective))
-
-for key, var_obj in x_var.items():
-    if var_obj.varValue > 0.5:  # chosen
-        print("Chosen combination:", key, "Cost:", var_obj.varValue)

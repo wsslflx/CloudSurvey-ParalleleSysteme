@@ -4,6 +4,8 @@ from CloudSurvey_Package.help_methods import dimensions_test, generate_output_st
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
+from CloudSurvey_Package.fill_cost_maps import *
+from CloudSurvey_Package.optimization_problem import *
 
 load_dotenv()
 connection_string_compute = os.getenv('MONGODB_URI')
@@ -31,9 +33,23 @@ def main_no_storage(provider, list, konfidenzgrad):
     else:
         generate_output(total_cost, single_cost, konfidenzgrad, True, provider)
 
+def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, lrs):
+    client_compute = MongoClient(connection_string_compute)
+    client_storage = MongoClient(connection_string_storage)
+    compute_cost_map = fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client_compute)
+    storage_cost_map = fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client_storage)
+    transfer_cost_map = fill_transfer_cost_map(provider, client_storage)
 
-list_test = [["FX48-12mds v2 Spot", 4002]],[["E2s v5 Spot", 3500]]
+    model, x_var = (optimize_with_triple_compute(compute_cost_map, storage_cost_map, transfer_cost_map))
+    print("Status:", pulp.LpStatus[model.status])
+    print("Objective:", pulp.value(model.objective))
+
+    for key, var_obj in x_var.items():
+        if var_obj.varValue > 0.5:  # chosen
+            print("Chosen combination:", key, "Cost:", var_obj.varValue)
+
+list_test = ([["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 3500]])
 list_test_2 = [["FX48-12mds v2 Spot", 4002]]
 
 
-main_storage("Azure", list_test, 95, 200, False, False)
+main_optimization("Azure", list_test, 95, 200, False, False)
