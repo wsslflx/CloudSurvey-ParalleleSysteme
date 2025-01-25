@@ -64,6 +64,7 @@ def get_storage_cost(provider, volume, premium, lrs, client):
         storage_prices = fetch_storage_prices(provider, skuName, client)
     return storage_prices
 
+
 def calculate_storage_price(price_region, duration, provider):
     if provider == "Azure":
         hour_price = (price_region["price"] / 7300)
@@ -93,7 +94,6 @@ def calculate_complete_storage_price(provider, volume, premium, lrs, client, dur
             return [storagePriceToRegion, regionTo]
 
     return [complete_cost_cheapestRegion, lowest_price_region["region"]]
-
 
 """
 load_dotenv()

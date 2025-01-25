@@ -13,7 +13,7 @@ def main_storage(provider, list, konfidenzgrad, volume, premium, lrs):
     client_compute = MongoClient(connection_string_compute)
     client_storage = MongoClient(connection_string_storage)
 
-    total_cost, single_cost = ((multiple_jobs(provider, list, konfidenzgrad, client_compute)))
+    total_cost, single_cost = (multiple_jobs(provider, list, konfidenzgrad, client_compute))
     if dimensions_test(single_cost) == 1:
         storage_cost = calculate_complete_storage_price(provider, volume, premium, lrs, client_storage, total_cost[3], single_cost[5])
         generate_output_storage(total_cost, single_cost, storage_cost, konfidenzgrad, False, provider)

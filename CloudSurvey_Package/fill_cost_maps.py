@@ -44,8 +44,13 @@ def all_cost_instance(provider, instance, duration, region, konfidenzgrad, clien
     return costs_slot
 
 
-def fill_compute_cost_map_all(provider, instance_list, regions, konfidenzgrad, client):
+def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client):
     compute_cost_map = {}
+
+    if provider == "Azure":
+        regions = constants.azure_regions
+    else:
+        regions = constants.aws_regions
 
     for instance_info in instance_list:
         instance_type = instance_info[0]  # e.g. "m5.large"
@@ -79,7 +84,7 @@ def fill_compute_cost_map_all(provider, instance_list, regions, konfidenzgrad, c
     return compute_cost_map
 
 
-def fill_storage_cost_map(provider, volume, premium, lrs, client, duration_hours):
+def fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client):
     """
     Creates a map { region: storage_cost } for *all* regions
     available in the DB for the specified storage SKU, ignoring transfer cost.
@@ -93,24 +98,17 @@ def fill_storage_cost_map(provider, volume, premium, lrs, client, duration_hours
     :return: dict { region_name: cost_for_that_region }
     """
 
-    # 1) Get ALL region-prices for this storage spec from DB
-    #    Example of returned structure:
-    #    [
-    #      {"region": "germanywestcentral", "price": 12.4},
-    #      {"region": "polandcentral",      "price": 10.3},
-    #      ...
-    #    ]
     storage_price_list = get_storage_cost(provider, volume, premium, lrs, client)
 
-    # 2) Build a dictionary: region -> cost_for_that_region
     storage_cost_map = {}
 
     for price_info in storage_price_list:
-        region_name = price_info["region"]
-        # Calculate cost ignoring any transfer charge
-        region_cost = calculate_storage_price(price_info, duration_hours, provider)
-        # Store in the map
-        storage_cost_map[region_name] = region_cost
+        for instance in instance_list:
+            region_name = price_info["region"]
+            instance_name = instance[0]
+            hour_duration = second_to_hour(int(instance[1]))
+            cost = (price_info["price"] / 730) * hour_duration
+            storage_cost_map[region_name, instance_name] = cost
 
     return storage_cost_map
 
@@ -148,8 +146,6 @@ connection_string_compute = os.getenv('MONGODB_URI')
 connection_string_storage = os.getenv('MONGODB_URI2')
 client_storage = MongoClient(connection_string_storage)
 
-print(fill_transfer_cost_map("AWS", client_storage))
-# print(fill_storage_cost_map("Azure", 400, True, False, client_storage, 50))
 """
 client_compute = MongoClient(connection_string_compute)
 
