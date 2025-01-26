@@ -1,4 +1,3 @@
-
 from CloudSurvey_Package.math_operations import calculate_konfidenzintervall
 
 def get_database(db_name, client):

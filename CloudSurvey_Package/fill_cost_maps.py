@@ -1,7 +1,7 @@
-from CloudSurvey_Package.computing_prices import get_all_instancePriceperHour, get_hour_combinations, cost_one_job
+from CloudSurvey_Package.computing_prices import cost_one_job
 from CloudSurvey_Package.help_methods import *
 from CloudSurvey_Package.db_operations import get_all_instancePriceperHour
-from CloudSurvey_Package.storage_prices import get_storage_cost, calculate_storage_price, get_transfer_cost
+from CloudSurvey_Package.storage_prices import get_storage_cost, get_transfer_cost
 from CloudSurvey_Package.math_operations import second_to_hour
 import CloudSurvey_Package.constants as constants
 

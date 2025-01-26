@@ -94,12 +94,3 @@ def calculate_complete_storage_price(provider, volume, premium, lrs, client, dur
             return [storagePriceToRegion, regionTo]
 
     return [complete_cost_cheapestRegion, lowest_price_region["region"]]
-
-"""
-load_dotenv()
-connection_string = os.getenv("MONGODB_URI2")
-
-client = MongoClient(connection_string)
-
-print(calculate_complete_storage_price("AWS", 100, False, False, client, 11.5, "eu-west-2"))
-"""
