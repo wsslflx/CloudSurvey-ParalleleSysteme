@@ -62,7 +62,6 @@ def cost_one_job(priceList, hourCombination, duration):
                 min_cost_atEnd += priceList[hour][0]
                 mean_cost_atEnd += priceList[hour][1]
                 max_cost_atEnd += priceList[hour][2]
-
         if mean_cost_atBeginning > mean_cost_atEnd:
             return min_cost_atEnd, mean_cost_atEnd, max_cost_atEnd, startTime
         else:

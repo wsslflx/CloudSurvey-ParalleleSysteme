@@ -6,7 +6,7 @@ from CloudSurvey_Package.math_operations import second_to_hour
 import CloudSurvey_Package.constants as constants
 
 
-def all_cost_instance(provider, instance, duration, region, konfidenzgrad, client):
+def all_cost_instance(provider, instance, duration, region, konfidenzgrad, client, parallelization):
     """
     Returns a list of [min_cost, mean_cost, max_cost, startTime, duration, region]
     for *every* possible time slot combination, without filtering to the cheapest.
@@ -17,6 +17,7 @@ def all_cost_instance(provider, instance, duration, region, konfidenzgrad, clien
     :param region: region name/string
     :param konfidenzgrad: confidence level used in your DB queries
     :param client: database client or connection
+    :param parallelization: set of possible parallelization factors
     :return: list of lists, one entry per time slot combination
     """
     costs_slot = []
@@ -27,24 +28,28 @@ def all_cost_instance(provider, instance, duration, region, konfidenzgrad, clien
         # No price data
         return []
 
-    # Generate all possible hour combinations for the given duration
-    # (This is presumably your existing function that returns a list of hour arrays)
-    hour_combinations = get_hour_combinations(duration)
+    for factor in parallelization:
+        parallelization_duration = duration / factor
+        # Generate all possible hour combinations for the given duration and parallelization
+        hour_combinations = get_hour_combinations((parallelization_duration))
 
-    # For each possible time slot combination, compute min/mean/max
-    for timeSlot in hour_combinations:
-        cost_min, cost_mean, cost_max, startTime = cost_one_job(
-            priceList=costsPerHour,
-            hourCombination=timeSlot,
-            duration=duration
-        )
-        if cost_mean > 0:
-            costs_slot.append([cost_min, cost_mean, cost_max, startTime, duration, region])
+        # For each possible time slot combination, compute min/mean/max
+        for timeSlot in hour_combinations:
+            cost_min, cost_mean, cost_max, startTime = cost_one_job(
+                priceList=costsPerHour,
+                hourCombination=timeSlot,
+                duration=parallelization_duration
+            )
+            if cost_mean > 0:
+                cost_min = cost_min * factor
+                cost_mean = cost_mean * factor
+                cost_max = cost_max * factor
+                costs_slot.append([cost_min, cost_mean, cost_max, startTime, parallelization_duration, region, factor])
 
     return costs_slot
 
 
-def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client):
+def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client, parallelization):
     compute_cost_map = {}
 
     if provider == "Azure":
@@ -58,21 +63,22 @@ def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client):
         duration_hours = second_to_hour(duration_in_seconds)
 
         for region in regions:
-            # Get *all* cost possibilities for this (instance, region, duration)
+            # Get all cost possibilities for this (instance, region, duration)
             costs_for_all_slots = all_cost_instance(
                 provider=provider,
                 instance=instance_type,
                 duration=duration_hours,
                 region=region,
                 konfidenzgrad=konfidenzgrad,
-                client=client
+                client=client,
+                parallelization=parallelization
             )
 
-            for cost_min, cost_mean, cost_max, start_time, dur, reg in costs_for_all_slots:
+            for cost_min, cost_mean, cost_max, start_time, dur, reg, factor in costs_for_all_slots:
                 # Build the dictionary key
-                dict_key = (reg, instance_type, start_time)
+                dict_key = (reg, instance_type, start_time, factor)
 
-                # Add or append to the dictionary
+                # Add to the dictionary
                 if dict_key not in compute_cost_map:
                     compute_cost_map[dict_key] = []
 
@@ -84,7 +90,7 @@ def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client):
     return compute_cost_map
 
 
-def fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client):
+def fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client, parallelization):
     """
     Creates a map { region: storage_cost } for *all* regions
     available in the DB for the specified storage SKU, ignoring transfer cost.
@@ -104,11 +110,13 @@ def fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client)
 
     for price_info in storage_price_list:
         for instance in instance_list:
-            region_name = price_info["region"]
-            instance_name = instance[0]
-            hour_duration = second_to_hour(int(instance[1]))
-            cost = (price_info["price"] / 730) * hour_duration
-            storage_cost_map[region_name, instance_name] = cost
+            for factor in parallelization:
+                region_name = price_info["region"]
+                instance_name = instance[0]
+                hour_duration = second_to_hour(int(instance[1]))
+                hour_duration_parallelization = hour_duration / factor
+                cost = (price_info["price"] / 730) * hour_duration_parallelization
+                storage_cost_map[region_name, instance_name, factor] = cost
 
     return storage_cost_map
 

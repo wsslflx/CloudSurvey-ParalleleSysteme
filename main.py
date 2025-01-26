@@ -33,14 +33,15 @@ def main_no_storage(provider, list, konfidenzgrad):
     else:
         generate_output(total_cost, single_cost, konfidenzgrad, True, provider)
 
-def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, lrs):
+def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, lrs, parallelization):
     client_compute = MongoClient(connection_string_compute)
     client_storage = MongoClient(connection_string_storage)
-    compute_cost_map = fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client_compute)
-    storage_cost_map = fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client_storage)
+
+    compute_cost_map = fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client_compute, parallelization)
+    storage_cost_map = fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client_storage, parallelization)
     transfer_cost_map = fill_transfer_cost_map(provider, client_storage)
 
-    model, x_var = (optimize_with_triple_compute(compute_cost_map, storage_cost_map, transfer_cost_map))
+    model, x_var = (optimize(compute_cost_map, storage_cost_map, transfer_cost_map))
     print("Status:", pulp.LpStatus[model.status])
     print("Objective:", pulp.value(model.objective))
 
@@ -48,8 +49,9 @@ def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, l
         if var_obj.varValue > 0.5:  # chosen
             print("Chosen combination:", key, "Cost:", var_obj.varValue)
 
-list_test = ([["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 3500]])
+
+list_test = ([["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 350]])
 list_test_2 = [["FX48-12mds v2 Spot", 4002]]
+parallelization_set = [1, 2, 4]
 
-
-main_optimization("Azure", list_test, 95, 200, False, False)
+main_optimization("Azure", list_test, 95, 200, False, False, parallelization_set)
