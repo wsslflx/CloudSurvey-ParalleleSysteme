@@ -50,7 +50,7 @@ def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, l
             print("Chosen combination:", key, "Cost:", var_obj.varValue)
 
 
-list_test = ([["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 350]])
+list_test = ([["FX48-12mds v2 Spot", 40020],["E2s v5 Spot", 35000]])
 list_test_2 = [["FX48-12mds v2 Spot", 4002]]
 parallelization_set = [1, 2, 4]
 

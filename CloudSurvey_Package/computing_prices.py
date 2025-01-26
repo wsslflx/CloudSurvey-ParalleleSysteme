@@ -29,7 +29,11 @@ def cost_one_job(priceList, hourCombination, duration):
         return min_cost, mean_cost, max_cost, hourCombination[0]
     else:
         started_hour = duration - int(duration)
-        startTime = hourCombination[0] - started_hour
+        if hourCombination[0] == 0:
+            startTime = 24 - started_hour
+        else:
+            startTime = hourCombination[0] - started_hour
+
         min_cost_atBeginning = 0
         mean_cost_atBeginning = 0
         max_cost_atBeginning = 0

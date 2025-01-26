@@ -5,6 +5,22 @@ def optimize(
     storage_cost_map,
     transfer_cost_map
 ):
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
+
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+        """
+
     model = pulp.LpProblem("Unified_Cloud_Optimization", pulp.LpMinimize)
 
     # ----------------------------------------------------------------
@@ -30,11 +46,12 @@ def optimize(
             storage_cost = storage_cost_map[(r1_s, i_s, p_s)]
 
             for (r2_c, i_c, s_c, p_c) in compute_cost_map.keys():
-                if r2_c == r2 and i_c == i_s and p_c == p_s:
+                if (r2_c == r2) and (i_c == i_s) and (p_c == p_s):
                     # match on region r2 and instance i
                     compute_cost = compute_cost_map[(r2_c, i_c, s_c, p_c)]
 
                     total_cost = storage_cost + transfer_c + compute_cost[0][1] #use mean cost for compute_cost
+
                     quintuple = (r1, r2, i_s, s_c, p_s)
                     feasible_keys.append(quintuple)
                     cost_map_combo[quintuple] = total_cost
@@ -43,7 +60,7 @@ def optimize(
     # 2) Create decision variables for each feasible quadruple
     x_var = {
         (r1, r2, i, s, p): pulp.LpVariable(
-            f"x_{r1}_{r2}_{i}_{s}",
+            f"x_{r1}_{r2}_{i}_{s}_p{p}",
             lowBound=0,
             upBound=1,
             cat=pulp.LpBinary
@@ -60,7 +77,8 @@ def optimize(
     )
 
     # ----------------------------------------------------------------
-    # 4) Objective: sum of x_var * combined cost
+    # 4) Objective: sum of x_var 
+    # * combined cost
     model += pulp.lpSum([
         x_var[(r1, r2, i, s, p)] * cost_map_combo[(r1, r2, i, s, p)]
         for (r1, r2, i, s, p) in feasible_keys
@@ -74,6 +92,10 @@ def optimize(
 
     model.solve(pulp.PULP_CBC_CMD(msg=0))
 
+    if pulp.LpStatus[model.status] != 'Optimal':
+        raise RuntimeError("Optimization did not converge to an optimal solution.")
+
     return model, x_var
+
 
 
