@@ -149,7 +149,83 @@ def multiple_jobs(provider, jobs, konfidenzgrad, client):
         total_costs = [single_costs[0], single_costs[1], single_costs[2], single_costs[4]]
         return total_costs, single_costs
 
+def compute_cost_for_start_hour(
+    start_hour,
+    duration_hours,
+    extended_costs,
+    prefix_min,
+    prefix_mean,
+    prefix_max
+):
+    """
+    Computes the (min_cost, mean_cost, max_cost, final_start_time) for
+    a possibly fractional duration when the job starts at a certain hour.
 
+    1) Handles partial hour at the beginning OR the end (picks whichever is cheaper by mean cost).
+    2) Uses prefix sums for O(1) cost lookups.
+
+    :param start_hour: integer start hour in [0..23]
+    :param duration_hours: possibly fractional duration in hours
+    :param extended_costs: the 48-hour extended cost array
+    :param prefix_min, prefix_mean, prefix_max: prefix sums for min, mean, max costs
+    :return: (min_cost, mean_cost, max_cost, final_start_time)
+    """
+
+    int_dur = int(duration_hours)               # integer part of duration
+    frac_dur = duration_hours - int_dur         # fractional part
+
+    # Helper function to compute sum from prefix arrays
+    def sum_cost(prefix_array, i, j):
+        return prefix_array[j] - prefix_array[i]
+
+    #  SCENARIO 1: partial at the beginning
+    scenario1_min = 0.0
+    scenario1_mean = 0.0
+    scenario1_max = 0.0
+    if frac_dur > 0:
+        scenario1_min += extended_costs[start_hour][0] * frac_dur
+        scenario1_mean += extended_costs[start_hour][1] * frac_dur
+        scenario1_max += extended_costs[start_hour][2] * frac_dur
+
+    start_index_1 = start_hour + 1
+    end_index_1 = start_hour + 1 + int_dur
+    if int_dur > 0:
+        scenario1_min += sum_cost(prefix_min,  start_index_1, end_index_1)
+        scenario1_mean += sum_cost(prefix_mean, start_index_1, end_index_1)
+        scenario1_max += sum_cost(prefix_max,  start_index_1, end_index_1)
+
+    # The final "reported" startTime if partial is at the beginning
+    if start_hour != 0:
+        scenario1_start_time = start_hour - frac_dur
+    else:
+        scenario1_start_time = 24 - frac_dur
+
+    # SCENARIO 2: partial at the end
+    scenario2_min = 0.0
+    scenario2_mean = 0.0
+    scenario2_max = 0.0
+
+    start_index_2 = start_hour
+    end_index_2 = start_hour + int_dur
+    if int_dur > 0:
+        scenario2_min += sum_cost(prefix_min,  start_index_2, end_index_2)
+        scenario2_mean += sum_cost(prefix_mean, start_index_2, end_index_2)
+        scenario2_max += sum_cost(prefix_max,  start_index_2, end_index_2)
+
+    if frac_dur > 0:
+        final_hour = start_hour + int_dur
+        scenario2_min += extended_costs[final_hour][0] * frac_dur
+        scenario2_mean += extended_costs[final_hour][1] * frac_dur
+        scenario2_max += extended_costs[final_hour][2] * frac_dur
+
+    # The final "reported" startTime if partial is at the end
+    scenario2_start_time = float(start_hour)
+
+    # Decide which scenario to pick based on mean cost
+    if scenario1_mean < scenario2_mean:
+        return scenario1_min, scenario1_mean, scenario1_max, scenario1_start_time
+    else:
+        return scenario2_min, scenario2_mean, scenario2_max, scenario2_start_time
 
 #Testing
 """

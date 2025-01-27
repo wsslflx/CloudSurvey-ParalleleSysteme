@@ -2,6 +2,9 @@ from CloudSurvey_Package.computing_prices import multiple_jobs
 from CloudSurvey_Package.storage_prices import calculate_complete_storage_price
 from CloudSurvey_Package.fill_cost_maps import *
 from CloudSurvey_Package.optimization_problem import *
+import os
+from dotenv import load_dotenv
+from pymongo import MongoClient
 
 def main_storage(provider, list, konfidenzgrad, volume, premium, lrs):
     client_compute = MongoClient(connection_string_compute)
@@ -41,12 +44,11 @@ def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, l
         if var_obj.varValue > 0.5:  # chosen
             print("Chosen combination:", key, "Cost:", var_obj.varValue)
 
-
 load_dotenv()
 connection_string_compute = os.getenv('MONGODB_URI')
 connection_string_storage = os.getenv('MONGODB_URI2')
 
-list_test = ([["FX48-12mds v2 Spot", 40020],["E2s v5 Spot", 35000]])
+list_test = ([["FX48-12mds v2 Spot", 3600],["E2s v5 Spot", 3000]])
 list_test_2 = [["FX48-12mds v2 Spot", 4002]]
 parallelization_set = [1, 2, 4]
 

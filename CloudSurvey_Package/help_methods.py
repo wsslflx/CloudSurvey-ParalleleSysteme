@@ -134,3 +134,23 @@ def generate_output(total_cost, single_costs, konfidenzgrad, multiple, provider)
             konfidenzgrad) + "% of cases")
         print("Expected Time needed: " + str(single_costs[4]) + " hours")
         print("Best Starting Time: " + str(single_costs[3]))
+
+def build_prefix_arrays(costs_per_hour):
+    """
+    Builds prefix sums for a 48-hour extended window of the 24-hour cost array.
+    Returns:
+      extended_costs, prefix_min, prefix_mean, prefix_max
+    """
+    extended_costs = costs_per_hour + costs_per_hour
+
+    # Prepare prefix arrays
+    prefix_min = [0] * (48 + 1)
+    prefix_mean = [0] * (48 + 1)
+    prefix_max = [0] * (48 + 1)
+
+    for i in range(48):
+        prefix_min[i + 1] = prefix_min[i] + extended_costs[i][0]
+        prefix_mean[i + 1] = prefix_mean[i] + extended_costs[i][1]
+        prefix_max[i + 1] = prefix_max[i] + extended_costs[i][2]
+
+    return extended_costs, prefix_min, prefix_mean, prefix_max

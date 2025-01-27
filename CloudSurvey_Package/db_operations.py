@@ -39,7 +39,6 @@ def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, clie
         collection_name = "aws_spot_prices"
 
     docs = fetch_all_hours_prices(db, collection_name, instance, region)
-
     prices_by_hour = {h: [] for h in range(24)}  # dict of hour -> list of prices
     for doc in docs:
         hour = doc['hour']

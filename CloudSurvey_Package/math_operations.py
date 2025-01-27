@@ -29,4 +29,6 @@ def second_to_hour(seconds):
 def gb_to_gib(volume):
     return float(volume) / 1.074
 
+def sum_cost(cost_type, i, j):
+    return cost_type[j] - cost_type[i]
 

@@ -1,55 +1,73 @@
-from CloudSurvey_Package.computing_prices import cost_one_job
+from CloudSurvey_Package.computing_prices import compute_cost_for_start_hour
 from CloudSurvey_Package.help_methods import *
 from CloudSurvey_Package.db_operations import get_all_instancePriceperHour
 from CloudSurvey_Package.storage_prices import get_storage_cost, get_transfer_cost
 from CloudSurvey_Package.math_operations import second_to_hour
 import CloudSurvey_Package.constants as constants
 
-
 def all_cost_instance(provider, instance, duration, region, konfidenzgrad, client, parallelization):
     """
-    Returns a list of [min_cost, mean_cost, max_cost, startTime, duration, region]
-    for *every* possible time slot combination, without filtering to the cheapest.
+    Returns a list of [min_cost, mean_cost, max_cost, startTime, duration, region, factor]
+    for every possible start hour (0..23) for each parallelization factor,
+    without filtering to the cheapest time slot.
 
-    :param provider: "AWS" or "Azure"
-    :param instance: instance name/string (e.g. "m5.large")
-    :param duration: job duration in hours (can be float)
-    :param region: region name/string
-    :param konfidenzgrad: confidence level used in your DB queries
-    :param client: database client or connection
-    :param parallelization: set of possible parallelization factors
-    :return: list of lists, one entry per time slot combination
+    **Performance Improvements**:
+    - We only consider 24 possible start hours.
+    - We use prefix sums (48-hour extension) to compute min/mean/max in O(1) for each slot.
+    - We handle partial hours at the beginning or end and pick the cheaper option by mean cost.
     """
-    costs_slot = []
 
-    # Retrieve all the per-hour prices for this instance/region
-    costsPerHour = get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, client)
-    if not costsPerHour:
+    # 1) Retrieve per-hour prices for this instance/region
+    costs_per_hour = get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, client)
+    if not costs_per_hour:
         # No price data
         return []
 
+    # Check if mean is all zeros => no real cost
+    has_nonzero_mean = any(hour_cost[1] != 0 for hour_cost in costs_per_hour)
+    if not has_nonzero_mean:
+        return []
+
+    # 2) Build extended array and prefix sums
+    extended_costs, prefix_min, prefix_mean, prefix_max = build_prefix_arrays(costs_per_hour)
+
+    results = []
+    # 3) For each parallelization factor, compute costs for each of the 24 start hours
     for factor in parallelization:
-        parallelization_duration = duration / factor
-        # Generate all possible hour combinations for the given duration and parallelization
-        hour_combinations = get_hour_combinations((parallelization_duration))
-
-        # For each possible time slot combination, compute min/mean/max
-        for timeSlot in hour_combinations:
-            cost_min, cost_mean, cost_max, startTime = cost_one_job(
-                priceList=costsPerHour,
-                hourCombination=timeSlot,
-                duration=parallelization_duration
+        par_duration = duration / factor
+        for start_hour in range(24):
+            cmin, cmean, cmax, final_start_time = compute_cost_for_start_hour(
+                start_hour,
+                par_duration,
+                extended_costs,
+                prefix_min,
+                prefix_mean,
+                prefix_max
             )
-            if cost_mean > 0:
-                cost_min = cost_min * factor
-                cost_mean = cost_mean * factor
-                cost_max = cost_max * factor
-                costs_slot.append([cost_min, cost_mean, cost_max, startTime, parallelization_duration, region, factor])
+            # Scale by factor
+            cmin  *= factor
+            cmean *= factor
+            cmax  *= factor
 
-    return costs_slot
+            # Only add if mean cost > 0
+            if cmean > 0:
+                results.append([
+                    cmin,
+                    cmean,
+                    cmax,
+                    final_start_time,
+                    par_duration,
+                    region,
+                    factor
+                ])
+    return results
 
 
 def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client, parallelization):
+    """
+    Builds a dictionary keyed by (region, instance_type, start_time, factor)
+    with all possible (cost_min, cost_mean, cost_max, duration) data.
+    """
     compute_cost_map = {}
 
     if provider == "Azure":
@@ -63,7 +81,6 @@ def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client, pa
         duration_hours = second_to_hour(duration_in_seconds)
 
         for region in regions:
-            # Get all cost possibilities for this (instance, region, duration)
             costs_for_all_slots = all_cost_instance(
                 provider=provider,
                 instance=instance_type,
@@ -75,20 +92,15 @@ def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client, pa
             )
 
             for cost_min, cost_mean, cost_max, start_time, dur, reg, factor in costs_for_all_slots:
-                # Build the dictionary key
                 dict_key = (reg, instance_type, start_time, factor)
-
-                # Add to the dictionary
                 if dict_key not in compute_cost_map:
                     compute_cost_map[dict_key] = []
 
-                # Append a tuple of the cost data
                 compute_cost_map[dict_key].append(
                     (cost_min, cost_mean, cost_max, dur)
                 )
 
     return compute_cost_map
-
 
 def fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client, parallelization):
     """
@@ -143,26 +155,3 @@ def fill_transfer_cost_map(provider, client):
 
     return transfer_cost_map
 
-
-
-
-import os
-from dotenv import load_dotenv
-from pymongo import MongoClient
-load_dotenv()
-connection_string_compute = os.getenv('MONGODB_URI')
-connection_string_storage = os.getenv('MONGODB_URI2')
-client_storage = MongoClient(connection_string_storage)
-
-"""
-client_compute = MongoClient(connection_string_compute)
-
-
-print(fill_compute_cost_map_all(
-    provider="Azure",
-    instance_list= [["FX48-12mds v2 Spot", 4002],["E2s v5 Spot", 3500]],
-    regions = constants.azure_regions,
-    konfidenzgrad=95,
-    client=client_compute
-))
-"""
