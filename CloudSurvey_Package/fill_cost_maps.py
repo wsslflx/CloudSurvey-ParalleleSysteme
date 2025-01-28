@@ -149,9 +149,7 @@ def fill_transfer_cost_map(provider, client):
     # Enumerate all region pairs
     for region_from in regions:
         for region_to in regions:
-            # Use your existing function to fetch cost
             cost = get_transfer_cost(region_from, region_to, provider, client)
             transfer_cost_map[(region_from, region_to)] = cost
-
     return transfer_cost_map
 
