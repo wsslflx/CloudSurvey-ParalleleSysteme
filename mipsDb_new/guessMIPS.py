@@ -1,16 +1,20 @@
 import joblib
-import numpy as np
 import pandas as pd
-import json
-from sklearn.preprocessing import OneHotEncoder
 
-def predict_mips_from_json(model_path, json_path, encoder, partition_columns):
+def predict_mips(model_path, partition, nnodes, ncpus, io_usage, memory_usage, data_input_size, data_output_size, elapsed_time, encoder, partition_columns):
     """
-    Predict MIPS for a job based on input parameters provided in a JSON file using the trained model.
+    Predict MIPS for a job based on input parameters using the trained model.
 
     Parameters:
     - model_path: Path to the trained model file.
-    - json_path: Path to the JSON file containing job parameters.
+    - partition: Partition name (string).
+    - nnodes: Number of nodes (integer).
+    - ncpus: Number of CPUs (integer).
+    - io_usage: IO usage (float).
+    - memory_usage: Memory usage (float).
+    - data_input_size: Data input size (float).
+    - data_output_size: Data output size (float).
+    - elapsed_time: Elapsed time (integer).
     - encoder: OneHotEncoder used for encoding the partition column.
     - partition_columns: List of encoded partition column names.
 
@@ -19,6 +23,7 @@ def predict_mips_from_json(model_path, json_path, encoder, partition_columns):
     """
     BASE_CPU_TAKT = 2.45  # GHz, default value for EPYC processors
 
+    '''
     try:
         with open(json_path, 'r') as file:
             job_data = json.load(file)
@@ -28,25 +33,23 @@ def predict_mips_from_json(model_path, json_path, encoder, partition_columns):
     except json.JSONDecodeError:
         print(f"Error: JSON file at {json_path} is not properly formatted.")
         return None
+    '''
 
     # Prepare input data as a dictionary
     try:
         input_data = {
-            'partition': [job_data['partition']],
-            'nnodes': [int(job_data['nnodes'])],
-            'ncpus': [int(job_data['ncpus'])],
+            'partition': [partition],
+            'nnodes': [int(nnodes)],
+            'ncpus': [int(ncpus)],
             'cpu_takt': [BASE_CPU_TAKT],  # Use default CPU Takt
-            'io_usage': [float(job_data['io_usage'])],
-            'memory_usage': [float(job_data['memory_usage'])],
-            'data_input_size': [float(job_data['data_input_size'])],
-            'data_output_size': [float(job_data['data_output_size'])],
-            'elapsed_time': [int(job_data['elapsed_time'])]
+            'io_usage': [float(io_usage)],
+            'memory_usage': [float(memory_usage)],
+            'data_input_size': [float(data_input_size)],
+            'data_output_size': [float(data_output_size)],
+            'elapsed_time': [int(elapsed_time)]
         }
-    except KeyError as e:
-        print(f"Error: Missing key in JSON file: {e}")
-        return None
     except ValueError as e:
-        print(f"Error: Invalid value type in JSON file: {e}")
+        print(f"Error: Invalid value type in input parameters: {e}")
         return None
 
     # Convert input data to a DataFrame
@@ -76,6 +79,7 @@ def predict_mips_from_json(model_path, json_path, encoder, partition_columns):
 
     return predicted_mips[0]
 
+'''
 # Example usage
 if __name__ == "__main__":
     # Load encoder and partition columns (assuming they are available from training)
@@ -91,3 +95,4 @@ if __name__ == "__main__":
 
     if predicted_mips is not None:
         print(f"Predicted MIPS: {predicted_mips}")
+'''
