@@ -1,0 +1,12 @@
+Input über JSON File mit folgenden Parametern:
+
+{
+    "partition": String, --> Art des Jobs
+    "nnodes": INT, --> Anzahl der reservierten Nodes
+    "ncpus": INT, --> Gesamtanzahl aller reservierten CPUs
+    "io_usage": Float (GB/s), --> durchschnittliche I/O-Last des Jobs
+    "memory_usage": Float (GB), --> durchschnittlicher Arbeitsspeicherverbrauch
+    "data_input_size": Float (GB), --> Gesamtgröße der Eingabedaten
+    "data_output_size": Float (GB), --> Gesamtgröße der Ausgabedaten
+    "elapsed_time": INT (s) --> geschätzte Laufzeit des Jobs
+}
