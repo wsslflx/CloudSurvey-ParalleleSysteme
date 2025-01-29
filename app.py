@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import joblib
 from mipsDb_new.guessMIPS import predict_mips
+import subprocess
 
 load_dotenv()
 connection_string_storage = os.getenv('MONGODB_URI2')
@@ -48,15 +49,17 @@ def optimize():
     mips = predict_mips(model_path, partition, nnodes, ncpus, io_usage, memory_usage, data_input_size, data_output_size,
                  elapsed_time, encoder, partition_columns)
 
+    output = subprocess.run("Placeholder", shell=2)
+
 
     result = main_optimization(
-        provider=data['provider'],
-        instance_list=data['instance_list'],
-        konfidenzgrad=data['konfidenzgrad'],
-        volume=data['volume'],
-        premium=data['premium'],
-        lrs=data['lrs'],
-        parallelization=data['parallelization'],
+        provider,
+        instance_list,
+        konfidenzgrad,
+        volume,
+        premium,
+        lrs,
+        parallelization,
     )
 
     # Return the result as a JSON response

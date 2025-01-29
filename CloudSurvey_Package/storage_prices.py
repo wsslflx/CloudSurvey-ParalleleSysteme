@@ -38,16 +38,13 @@ def get_storage_skuname(volume, premium, lrs):
         if volume_in_gib < key:
             number = storage_map[key]
 
+    if lrs and premium:
+        return f"P{number} LRS"
     if lrs:
-        if premium:
-            return "P" + str(number) + " LRS"
-        else:
-            return "E" + str(number) + " LRS"
-    else:
-        if premium:
-            return "P" + str(number) + " ZRS"
-        else:
-            return "E" + str(number) + " ZRS"
+        return f"E{number} LRS"
+    if premium:
+        return f"P{number} ZRS"
+    return f"E{number} ZRS"
 
 
 def get_storage_cost(provider, volume, premium, lrs, client):
