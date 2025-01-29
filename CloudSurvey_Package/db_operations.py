@@ -34,16 +34,22 @@ def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, clie
     if provider == "Azure":
         db = get_database("AzureSpotPricesDB", client)
         collection_name = "SpotPrices"
+        docs = fetch_all_hours_prices(db, collection_name, instance, region)
+        prices_by_hour = {h: [] for h in range(24)}  # dict of hour -> list of prices
+        for doc in docs:
+            hour = doc['hour']
+            spot_price = doc['spot_price']
+            prices_by_hour[hour].append(spot_price)
     elif provider == "AWS":
         db = get_database("aws_spot_prices_db", client)
         collection_name = "aws_spot_prices"
+        docs = fetch_all_hours_prices(db, collection_name, instance, region)
+        prices_by_hour = {h: [] for h in range(24)}  # dict of hour -> list of prices
+        for doc in docs:
+            hour = doc['hour']
+            spot_price = doc['spot_price_eur']
+            prices_by_hour[hour].append(spot_price)
 
-    docs = fetch_all_hours_prices(db, collection_name, instance, region)
-    prices_by_hour = {h: [] for h in range(24)}  # dict of hour -> list of prices
-    for doc in docs:
-        hour = doc['hour']
-        spot_price = doc['spot_price']
-        prices_by_hour[hour].append(spot_price)
 
     costs = []
     for h in range(24):

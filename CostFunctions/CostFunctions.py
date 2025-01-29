@@ -171,7 +171,7 @@ def min_cost_instance(provider, instance, duration, region, konfidenzgrad):
 
 def request_into_list():
     response = requests.post(
-        "http://localhost:8080/simulate/aws?cloudletLength=10000",
+        "http://192.168.178.28:8080/simulate/aws?cloudletLength=10000",
         json={"key": "value"} # Request body
     )
     """

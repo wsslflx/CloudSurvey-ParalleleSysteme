@@ -1,3 +1,7 @@
+from textwrap import indent
+
+from botocore.utils import lowercase_dict
+from click import command
 from flask import Flask, request, jsonify
 from CloudSurvey_Package.optimization_solution import *
 from dotenv import load_dotenv
@@ -5,6 +9,8 @@ import os
 import joblib
 from mipsDb_new.guessMIPS import predict_mips
 import subprocess
+import requests
+import logging
 
 load_dotenv()
 connection_string_storage = os.getenv('MONGODB_URI2')
@@ -32,7 +38,7 @@ def optimize():
     lrs = data['lrs']
     parallelization = data['parallelization']
 
-    encoder = joblib.load("/Users/felixwissel/PycharmProjects/CloudSurvey-ParalleleSysteme/mipsDb_new/partition_encoder.pkl")
+    encoder = joblib.load("C:/Users/deniz/OneDrive/Desktop/CloudSurvey-ParalleleSysteme/mipsDb_new/partition_encoder.pkl")
     partition_columns = list(encoder.get_feature_names_out(['partition']))
 
     partition = data['partition']
@@ -44,17 +50,52 @@ def optimize():
     data_output_size = data['data_output_size']
     elapsed_time = data['elapsed_time']
 
-    model_path = "/Users/felixwissel/PycharmProjects/CloudSurvey-ParalleleSysteme/mipsDb_new/mips_model.pkl"
+    model_path = "C:/Users/deniz/OneDrive/Desktop/CloudSurvey-ParalleleSysteme/mipsDb_new/mips_model.pkl"
 
     mips = predict_mips(model_path, partition, nnodes, ncpus, io_usage, memory_usage, data_input_size, data_output_size,
                  elapsed_time, encoder, partition_columns)
 
-    output = subprocess.run("Placeholder", shell=2)
+    url = "http://192.168.178.28:8080/simulate"
+    data = {
+        "provider": "Azure",
+        "konfidenzgrad": 95,
+        "volume": 500,
+        "premium": True,
+        "lrs": True,
+        "parallelization": [1, 2, 4],
+        "partition": "normal",
+        "nnodes": 4,
+        "ncpus": 32,
+        "io_usage": 2.5,
+        "memory_usage": 128.0,
+        "data_input_size": 50.0,
+        "data_output_size": 10.0,
+        "elapsed_time": 3600
+    }
 
+    mips = int(mips)
+
+    logging.basicConfig(level=logging.INFO)
+
+    url2 = "http://192.168.178.28:8080/simulate/" + provider.lower() + "?cloudletLength=" + str(mips)
+    instances = requests.get(url2)
+
+    instances2 = instances.json()
+
+    instance_list = [[item['instance_name'], item['execution_time']] for item in instances2]
+
+    filtered_instances = [
+        item for item in instance_list if not any(
+            str(value).lower() == 'nan' for value in item
+        )
+    ]
+
+    #logging.info(filtered_instances)
+    logging.info(filtered_instances[:5])
 
     result = main_optimization(
         provider,
-        instance_list,
+        filtered_instances[:1],
         konfidenzgrad,
         volume,
         premium,
@@ -62,9 +103,15 @@ def optimize():
         parallelization,
     )
 
+    logging.info(result)
+
     # Return the result as a JSON response
     return jsonify({"result": result})
 
+
+    #return filtered_instances
+    #return jsonify({"result": instance_list})
+    #return jsonify({"result": url2})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5087)
