@@ -1,9 +1,8 @@
 from flask import Flask, request, jsonify
 from CloudSurvey_Package.optimization_solution import *
-from mipsDb_new import guessMIPS
 from dotenv import load_dotenv
 import os
-
+import joblib
 from mipsDb_new.guessMIPS import predict_mips
 
 load_dotenv()
@@ -32,6 +31,9 @@ def optimize():
     lrs = data['lrs']
     parallelization = data['parallelization']
 
+    encoder = joblib.load("/Users/felixwissel/PycharmProjects/CloudSurvey-ParalleleSysteme/mipsDb_new/partition_encoder.pkl")
+    partition_columns = list(encoder.get_feature_names_out(['partition']))
+
     partition = data['partition']
     nnodes = data['nnodes']
     ncpus = data['ncpus']
@@ -40,16 +42,13 @@ def optimize():
     data_input_size = data['data_input_size']
     data_output_size = data['data_output_size']
     elapsed_time = data['elapsed_time']
-    encoder = data['encoder']
-    partition_columns = data['partition_columns']
 
     model_path = "/Users/felixwissel/PycharmProjects/CloudSurvey-ParalleleSysteme/mipsDb_new/mips_model.pkl"
 
     mips = predict_mips(model_path, partition, nnodes, ncpus, io_usage, memory_usage, data_input_size, data_output_size,
                  elapsed_time, encoder, partition_columns)
 
-    print(mips)
-"""
+
     result = main_optimization(
         provider=data['provider'],
         instance_list=data['instance_list'],
@@ -62,6 +61,7 @@ def optimize():
 
     # Return the result as a JSON response
     return jsonify({"result": result})
-"""
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5087)

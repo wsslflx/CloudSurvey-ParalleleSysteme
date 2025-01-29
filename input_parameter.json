@@ -1,4 +1,5 @@
 {
+    "provider": "Azure",
     "konfidenzgrad": 95,
     "volume": 500,
     "premium": true,
