@@ -6,3 +6,4 @@ pulp
 numpy
 scipy
 pandas
+joblib

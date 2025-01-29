@@ -21,7 +21,6 @@ def run_optimization():
 
         # Extract required parameters from the request payload
         provider = data.get('provider', 'Azure')  # Default to "Azure"
-        instance_list = data.get('instance_list', [])
         konfidenzgrad = data.get('konfidenzgrad', 95)  # Default to 95
         data_volume = data.get('data_volume', 200)  # Default to 200
         premium = data.get('premium', False)
