@@ -40,6 +40,7 @@ def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, clie
             hour = doc['hour']
             spot_price = doc['spot_price']
             prices_by_hour[hour].append(spot_price)
+
     elif provider == "AWS":
         db = get_database("aws_spot_prices_db", client)
         collection_name = "aws_spot_prices"

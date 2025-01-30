@@ -1,14 +1,9 @@
-from textwrap import indent
-
-from botocore.utils import lowercase_dict
-from click import command
 from flask import Flask, request, jsonify
 from CloudSurvey_Package.optimization_solution import *
 from dotenv import load_dotenv
 import os
 import joblib
 from mipsDb_new.guessMIPS import predict_mips
-import subprocess
 import requests
 import logging
 
@@ -90,9 +85,6 @@ def optimize():
         )
     ]
 
-    #logging.info(filtered_instances)
-    logging.info(filtered_instances[:5])
-
     result = main_optimization(
         provider,
         filtered_instances[:1],
@@ -107,11 +99,6 @@ def optimize():
 
     # Return the result as a JSON response
     return jsonify({"result": result})
-
-
-    #return filtered_instances
-    #return jsonify({"result": instance_list})
-    #return jsonify({"result": url2})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5087)

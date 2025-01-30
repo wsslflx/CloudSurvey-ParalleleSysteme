@@ -35,6 +35,11 @@ def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, l
     client_compute = MongoClient(connection_string_compute)
     client_storage = MongoClient(connection_string_storage)
 
+    if provider.lower() == 'aws':
+        provider = "AWS"
+    else:
+        provider = "Azure"
+
     compute_cost_map = fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client_compute, parallelization)
     storage_cost_map = fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client_storage, parallelization)
     transfer_cost_map = fill_transfer_cost_map(provider, client_storage)

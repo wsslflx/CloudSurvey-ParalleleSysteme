@@ -13,8 +13,5 @@ client = MongoClient(connection_string)
 db = client["aws_spot_prices_db"]
 collection = db["aws_spot_prices"]
 
-# Get all unique values for the field
-unique_values = collection.distinct("region")
+collection.update_many({}, {"$rename": {"spot_price_eur": "spot_price"}})
 
-# Print the unique values
-print(unique_values)
