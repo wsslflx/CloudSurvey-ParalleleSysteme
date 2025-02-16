@@ -1,6 +1,6 @@
 import requests
 
-url = "http://192.168.178.20:5087/optimize"
+url = "http://136.172.13.164:5087/optimize"
 data = {
     "provider": "AWS",
     "konfidenzgrad": 95,

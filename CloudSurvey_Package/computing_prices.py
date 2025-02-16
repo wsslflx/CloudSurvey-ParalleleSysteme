@@ -2,6 +2,7 @@ from CloudSurvey_Package.help_methods import *
 import CloudSurvey_Package.constants as constants
 from CloudSurvey_Package.math_operations import second_to_hour
 from CloudSurvey_Package.db_operations import fetch_instance_prices, get_all_instancePriceperHour
+import numpy as np
 
 #fetch Instance Price from Database for specific time and return median
 def get_instancePriceperHour(provider, instance, hour, region, client):
@@ -157,20 +158,6 @@ def compute_cost_for_start_hour(
     prefix_mean,
     prefix_max
 ):
-    """
-    Computes the (min_cost, mean_cost, max_cost, final_start_time) for
-    a possibly fractional duration when the job starts at a certain hour.
-
-    1) Handles partial hour at the beginning OR the end (picks whichever is cheaper by mean cost).
-    2) Uses prefix sums for O(1) cost lookups.
-
-    :param start_hour: integer start hour in [0..23]
-    :param duration_hours: possibly fractional duration in hours
-    :param extended_costs: the 48-hour extended cost array
-    :param prefix_min, prefix_mean, prefix_max: prefix sums for min, mean, max costs
-    :return: (min_cost, mean_cost, max_cost, final_start_time)
-    """
-
     int_dur = int(duration_hours)               # integer part of duration
     frac_dur = duration_hours - int_dur         # fractional part
 
@@ -226,6 +213,71 @@ def compute_cost_for_start_hour(
         return scenario1_min, scenario1_mean, scenario1_max, scenario1_start_time
     else:
         return scenario2_min, scenario2_mean, scenario2_max, scenario2_start_time
+
+
+def find_cheapest_slot_vectorized(instance_list, pricing_data, region):
+    """
+        For each instance (given as [instance_type, duration_in_seconds]), this function finds
+        the best starting hour (0-23) in the given region that minimizes the total cost.
+
+        This simplified version leverages the fact that prices repeat every 24 hours.
+
+        Returns a dict mapping:
+            instance_type -> (region, best_start_hour, best_cost)
+    """
+    results = {}
+    # Build mapping: instance_type -> NumPy array of shape (24,) for the given region.
+    instance_pricing = {}
+    for entry in pricing_data:
+        if entry['region'] != region:
+            continue
+        itype = entry['instance_type']
+        hour = entry['hour']
+        price = entry['spot_price']
+        if itype not in instance_pricing:
+            instance_pricing[itype] = np.full(24, np.nan)
+        instance_pricing[itype][hour] = price
+
+    for instance_type, duration in instance_list:
+        # Skip if pricing data is incomplete
+        if instance_type not in instance_pricing or np.isnan(instance_pricing[instance_type]).any():
+            continue
+
+        hourly_prices = instance_pricing[instance_type]
+
+        # Compute full hours and remainder (seconds)
+        full_hours = duration // 3600
+        remainder = duration % 3600
+
+        # Compute how many full days and extra full hours remain.
+        full_days, extra_hours = divmod(full_hours, 24)
+
+        # Total cost for one full day (24 hours)
+        daily_cost = np.sum(hourly_prices)
+
+        # For each possible starting hour, compute cost for the extra hours beyond full days.            # Create an array of possible starting hours 0..23.
+        starts = np.arange(24)
+        # For extra full hours, we use modulo arithmetic: sum over indices (start + i) % 24 for i in 0..extra_hours-1.
+        if extra_hours > 0:
+            # Create a (24, extra_hours) array where each row contains the indices for that start.
+            indices = (starts[:, None] + np.arange(extra_hours)) % 24
+            extra_costs = np.sum(hourly_prices[indices], axis=1)
+        else:
+            extra_costs = np.zeros(24)
+
+        # Fractional hour cost: price at the next hour (cyclic) multiplied by the fraction of the hour.
+        fractional_indices = (starts + extra_hours) % 24
+        fractional_costs = hourly_prices[fractional_indices] * (remainder / 3600)
+
+        # Total cost for each start = cost for full days + cost for extra full hours + fractional hour cost.
+        total_costs = full_days * daily_cost + extra_costs + fractional_costs
+
+        best_index = int(np.argmin(total_costs))
+        best_cost = float(total_costs[best_index])
+        results[instance_type] = (region, best_index, best_cost, duration)
+
+    return results
+
 
 #Testing
 """
