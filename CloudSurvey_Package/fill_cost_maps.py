@@ -103,7 +103,7 @@ def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client, pa
     return compute_cost_map
 
 
-def fill_compute_cost_map_all_perfomance(provider, instance_list, client, parallelization):
+def fill_compute_cost_map_all_performance(provider, instance_list, client, parallelization):
     compute_cost_map = {}
 
     if provider == "Azure":
@@ -115,10 +115,13 @@ def fill_compute_cost_map_all_perfomance(provider, instance_list, client, parall
     pricing_list = get_mean_spot_price(client, instance_types, provider)
 
     for region in regions:
-        best_slots = (find_cheapest_slot_vectorized(instance_list, pricing_list, region))
-        for instance_type, (best_region, best_start, best_cost, duration) in best_slots.items():
-            compute_cost_map[(best_region, instance_type, best_start)] = (best_cost, duration)
-    print(compute_cost_map)
+        best_slots = (find_cheapest_slot_vectorized(instance_list, pricing_list, region, parallelization))
+
+        for instance_type, parallel_results in best_slots.items():
+            for factor, (reg, start_time, best_cost, effective_duration) in parallel_results.items():
+                dict_key = (reg, instance_type, start_time, factor)
+                compute_cost_map[dict_key] = (best_cost, effective_duration)
+
     return compute_cost_map
 
 
@@ -187,4 +190,4 @@ client = MongoClient(connection_string)
 
 list_test = [["FX48-12mds v2 Spot", 90900], ["E2s v5 Spot", 3000]]
 
-(fill_compute_cost_map_all_perfomance("Azure", list_test, client, [1, 2]))
+(fill_compute_cost_map_all_performance("Azure", list_test, client, [1, 2]))
