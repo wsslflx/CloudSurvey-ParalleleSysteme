@@ -4,12 +4,12 @@ from CloudSurvey_Package.db_operations import get_all_instancePriceperHour
 from CloudSurvey_Package.storage_prices import get_storage_cost, get_transfer_cost
 from CloudSurvey_Package.math_operations import second_to_hour
 import CloudSurvey_Package.constants as constants
-
+from CloudSurvey_Package.db_operations import get_mean_spot_price
+from CloudSurvey_Package.computing_prices import find_cheapest_slot_vectorized
 def all_cost_instance(provider, instance, duration, region, konfidenzgrad, client, parallelization):
     """
     Returns a list of [min_cost, mean_cost, max_cost, startTime, duration, region, factor]
-    for every possible start hour (0..23) for each parallelization factor,
-    without filtering to the cheapest time slot.
+    for every possible start hour (0..23) for each parallelization factor.
 
     **Performance Improvements**:
     - We only consider 24 possible start hours.
@@ -45,9 +45,9 @@ def all_cost_instance(provider, instance, duration, region, konfidenzgrad, clien
                 prefix_max
             )
             # Scale by factor
-            cmin  *= factor
+            cmin *= factor
             cmean *= factor
-            cmax  *= factor
+            cmax *= factor
 
             # Only add if mean cost > 0
             if cmean > 0:
@@ -102,6 +102,30 @@ def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client, pa
 
     return compute_cost_map
 
+
+def fill_compute_cost_map_all_performance(provider, instance_list, client, parallelization):
+    compute_cost_map = {}
+
+    if provider == "Azure":
+        regions = constants.azure_regions
+    else:
+        regions = constants.aws_regions
+
+    instance_types = [item[0] for item in instance_list]
+    pricing_list = get_mean_spot_price(client, instance_types, provider)
+
+    for region in regions:
+        best_slots = (find_cheapest_slot_vectorized(instance_list, pricing_list, region, parallelization))
+
+        for instance_type, parallel_results in best_slots.items():
+            for factor, (reg, start_time, best_cost, effective_duration) in parallel_results.items():
+                dict_key = (reg, instance_type, start_time, factor)
+                compute_cost_map[dict_key] = (best_cost, effective_duration)
+
+    return compute_cost_map
+
+
+
 def fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client, parallelization):
     """
     Creates a map { region: storage_cost } for *all* regions
@@ -153,3 +177,17 @@ def fill_transfer_cost_map(provider, client):
             transfer_cost_map[(region_from, region_to)] = cost
     return transfer_cost_map
 
+
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+connection_string = os.getenv('MONGODB_URI')
+connection_string2 = os.getenv('MONGODB_URI2')
+
+client = MongoClient(connection_string)
+
+list_test = [["FX48-12mds v2 Spot", 90900], ["E2s v5 Spot", 3000]]
+
+(fill_compute_cost_map_all_performance("Azure", list_test, client, [1, 2]))

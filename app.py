@@ -33,7 +33,7 @@ def optimize():
     lrs = data['lrs']
     parallelization = data['parallelization']
 
-    encoder = joblib.load("C:/Users/deniz/OneDrive/Desktop/CloudSurvey-ParalleleSysteme/mipsDb_new/partition_encoder.pkl")
+    encoder = joblib.load("mipsDb_new/partition_encoder.pkl")
     partition_columns = list(encoder.get_feature_names_out(['partition']))
 
     partition = data['partition']
@@ -45,12 +45,12 @@ def optimize():
     data_output_size = data['data_output_size']
     elapsed_time = data['elapsed_time']
 
-    model_path = "C:/Users/deniz/OneDrive/Desktop/CloudSurvey-ParalleleSysteme/mipsDb_new/mips_model.pkl"
+    model_path = "mipsDb_new/mips_model.pkl"
 
     mips = predict_mips(model_path, partition, nnodes, ncpus, io_usage, memory_usage, data_input_size, data_output_size,
                  elapsed_time, encoder, partition_columns)
 
-    url = "http://192.168.178.28:8080/simulate"
+    url = "http://136.172.12.144:8080/simulate"
     data = {
         "provider": "Azure",
         "konfidenzgrad": 95,
