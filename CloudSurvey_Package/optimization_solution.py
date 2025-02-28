@@ -2,6 +2,7 @@ from CloudSurvey_Package.computing_prices import multiple_jobs
 from CloudSurvey_Package.storage_prices import calculate_complete_storage_price
 from CloudSurvey_Package.fill_cost_maps import *
 from CloudSurvey_Package.optimization_problem import *
+from CloudSurvey_Package.db_operations import get_spot_price_interval
 import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
@@ -54,15 +55,23 @@ def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, l
         "objective": pulp.value(model.objective),
         "chosen_combinations": []
     }
+    cost = pulp.value(model.objective)
 
     for key, var_obj in x_var.items():
-        if var_obj.varValue > 0.5:  # chosen
+        if var_obj.varValue > 0.5:  # chosen keys
             print("Chosen combination:", key, "Cost:", var_obj.varValue)
             response["chosen_combinations"].append({
                 "combination": key,
                 "cost": var_obj.varValue
             })
+            final_key = key
 
+    interval = get_spot_price_interval(provider, final_key[2], final_key[0], final_key[3], final_key[4], konfidenzgrad, client_compute)
+    under_diff = interval["confidence_interval"][1] - interval["confidence_interval"][0]
+    over_diff = interval["confidence_interval"][2] - interval["confidence_interval"][1]
+    new_interval = [cost - under_diff, cost ,cost + over_diff]
+
+    print(new_interval)
 
 import os
 from dotenv import load_dotenv

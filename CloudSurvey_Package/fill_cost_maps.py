@@ -177,7 +177,7 @@ def fill_transfer_cost_map(provider, client):
             transfer_cost_map[(region_from, region_to)] = cost
     return transfer_cost_map
 
-
+"""
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
@@ -191,3 +191,4 @@ client = MongoClient(connection_string)
 list_test = [["FX48-12mds v2 Spot", 90900], ["E2s v5 Spot", 3000]]
 
 (fill_compute_cost_map_all_performance("Azure", list_test, client, [1, 2]))
+"""
