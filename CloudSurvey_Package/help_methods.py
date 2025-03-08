@@ -1,10 +1,40 @@
 import numpy as np
 import requests
 def dimensions_test(list):
+    """
+    Builds and solves a linear model picking exactly ONE combination of:
+      (r1, r2, i, s, p)
+
+    Where:
+      - storage is in region r1 (with instance i, parallel factor p),
+      - transfer is (r1->r2),
+      - compute is in region r2 (with instance i, parallel factor p),
+        starting time s.
+
+    The total cost = storage_cost_map[r1, i, p]
+                   + transfer_cost_map[r1, r2]
+                   + compute_cost_map[r2, i, s, p][0][1]
+    Exactly one tuple is chosen (x=1), to minimize total cost.
+    """
     np_list = np.array(list)
     return np_list.ndim
 
 def azure_instance_name(input_string):
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
+
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+        """
     if input_string.startswith("Standard"):
         input_string = input_string[len("Standard"):]
         input_string = input_string.replace("_", " ")
@@ -12,6 +42,21 @@ def azure_instance_name(input_string):
     return input_string
 
 def get_hour_combinations(duration):
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
+
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+    """
     numbers = list(range(24)) # 0 to 23
     combinations = []
 
@@ -26,6 +71,21 @@ def get_hour_combinations(duration):
     return combinations
 
 def request_into_list():
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
+
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+    """
     response = requests.post(
         "http://localhost:8080/simulate/aws?cloudletLength=10000",
         json={"key": "value"} # Request body
@@ -42,6 +102,21 @@ def request_into_list():
     return list
 
 def formatting_compute_cost_multiple(single_cost):
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
+
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+    """
     formatted_costs = []
     for single in single_cost:
         lowerLimitPrice = single[0][0]
@@ -65,11 +140,40 @@ def formatting_compute_cost_multiple(single_cost):
     return formatted_costs
 
 def formatting_compute_cost_single(single_cost):
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
+
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+        """
     flat_list = [element for item in single_cost for element in (item if isinstance(item, list) else [item])]
     return flat_list
 
 def generate_output_storage(total_cost, single_costs, storage_cost, konfidenzgrad, multiple, provider):
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
 
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+    """
     if provider == "Azure":
         currency = "€"
     else:
@@ -104,6 +208,21 @@ def generate_output_storage(total_cost, single_costs, storage_cost, konfidenzgra
         print("Best Starting Time: " + str(single_costs[3]))
 
 def generate_output(total_cost, single_costs, konfidenzgrad, multiple, provider):
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
+
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+    """
     if provider == "Azure":
         currency = "€"
     else:
@@ -137,7 +256,21 @@ def generate_output(total_cost, single_costs, konfidenzgrad, multiple, provider)
 
 def build_prefix_arrays(costs_per_hour):
     """
-    Builds prefix sums for a 48-hour extended window of the 24-hour cost array.
+    Builds and solves a linear model picking exactly ONE combination of:
+      (r1, r2, i, s, p)
+
+    Where:
+      - storage is in region r1 (with instance i, parallel factor p),
+      - transfer is (r1->r2),
+      - compute is in region r2 (with instance i, parallel factor p),
+        starting time s.
+
+    The total cost = storage_cost_map[r1, i, p]
+                   + transfer_cost_map[r1, r2]
+                   + compute_cost_map[r2, i, s, p][0][1]
+    Exactly one tuple is chosen (x=1), to minimize total cost.
+
+    Additionally, this method builds prefix sums for a 48-hour extended window of the 24-hour cost array.
     Returns:
       extended_costs, prefix_min, prefix_mean, prefix_max
     """

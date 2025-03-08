@@ -8,15 +8,28 @@ from CloudSurvey_Package.db_operations import get_mean_spot_price
 from CloudSurvey_Package.computing_prices import find_cheapest_slot_vectorized
 def all_cost_instance(provider, instance, duration, region, konfidenzgrad, client, parallelization):
     """
-    Returns a list of [min_cost, mean_cost, max_cost, startTime, duration, region, factor]
-    for every possible start hour (0..23) for each parallelization factor.
+        Computes cost metrics (min, mean, max) for every possible start hour (0..23)
+        and for each parallelization factor for the given instance and region.
 
-    **Performance Improvements**:
-    - We only consider 24 possible start hours.
-    - We use prefix sums (48-hour extension) to compute min/mean/max in O(1) for each slot.
-    - We handle partial hours at the beginning or end and pick the cheaper option by mean cost.
-    """
+        Performance Improvements:
+          - Considers only 24 possible start hours.
+          - Uses prefix sums (with a 48-hour extension) to compute min/mean/max in O(1) per slot.
+          - Handles partial hours at the beginning or end and selects the cheaper option based on mean cost.
 
+        Linear Model Optimization:
+          Builds and solves a linear model picking exactly ONE combination of:
+            (r1, r2, i, s, p)
+
+          Where:
+            - storage is in region r1 (with instance i, parallel factor p),
+            - transfer is (r1->r2),
+            - compute is in region r2 (with instance i, parallel factor p), starting time s.
+
+          The total cost = storage_cost_map[r1, i, p]
+                         + transfer_cost_map[r1, r2]
+                         + compute_cost_map[r2, i, s, p][0][1]
+          Exactly one tuple is chosen (x=1), to minimize total cost.
+        """
     # 1) Retrieve per-hour prices for this instance/region
     costs_per_hour = get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, client)
     if not costs_per_hour:
@@ -66,7 +79,23 @@ def all_cost_instance(provider, instance, duration, region, konfidenzgrad, clien
 def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client, parallelization):
     """
     Builds a dictionary keyed by (region, instance_type, start_time, factor)
-    with all possible (cost_min, cost_mean, cost_max, duration) data.
+    containing lists of (cost_min, cost_mean, cost_max, duration) tuples
+    computed for all valid combinations of start times and parallelization factors
+    for every instance in each region.
+
+    Linear Model Optimization:
+      Builds and solves a linear model picking exactly ONE combination of:
+        (r1, r2, i, s, p)
+
+      Where:
+        - storage is in region r1 (with instance i, parallel factor p),
+        - transfer is (r1->r2),
+        - compute is in region r2 (with instance i, parallel factor p), starting time s.
+
+      The total cost = storage_cost_map[r1, i, p]
+                     + transfer_cost_map[r1, r2]
+                     + compute_cost_map[r2, i, s, p][0][1]
+      Exactly one tuple is chosen (x=1), to minimize total cost.
     """
     compute_cost_map = {}
 
@@ -104,6 +133,25 @@ def fill_compute_cost_map_all(provider, instance_list, konfidenzgrad, client, pa
 
 
 def fill_compute_cost_map_all_performance(provider, instance_list, client, parallelization):
+    """
+    Builds a compute cost map dictionary where each key is (region, instance_type, start_time, factor)
+    and the corresponding value is a tuple (best_cost, effective_duration) derived by selecting
+    the cheapest compute slot based on vectorized pricing.
+
+    Linear Model Optimization:
+      Builds and solves a linear model picking exactly ONE combination of:
+        (r1, r2, i, s, p)
+
+      Where:
+        - storage is in region r1 (with instance i, parallel factor p),
+        - transfer is (r1->r2),
+        - compute is in region r2 (with instance i, parallel factor p), starting time s.
+
+      The total cost = storage_cost_map[r1, i, p]
+                     + transfer_cost_map[r1, r2]
+                     + compute_cost_map[r2, i, s, p][0][1]
+      Exactly one tuple is chosen (x=1), to minimize total cost.
+    """
     compute_cost_map = {}
 
     if provider == "Azure":
@@ -128,16 +176,22 @@ def fill_compute_cost_map_all_performance(provider, instance_list, client, paral
 
 def fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client, parallelization):
     """
-    Creates a map { region: storage_cost } for *all* regions
-    available in the DB for the specified storage SKU, ignoring transfer cost.
+    Creates a dictionary mapping each region (and instance/parallel factor) to its respective storage cost.
+    The cost is calculated based on the storage price, volume, and usage duration (adjusted for parallelization).
 
-    :param provider:        "AWS" or "Azure"
-    :param volume:          The storage volume in GB
-    :param premium:         Boolean indicating if premium storage
-    :param lrs:             Boolean indicating if LRS or ZRS (Azure-specific)
-    :param client:          DB/API client
-    :param duration_hours:  Duration in hours for which we calculate storage cost
-    :return: dict { region_name: cost_for_that_region }
+    Linear Model Optimization:
+      Builds and solves a linear model picking exactly ONE combination of:
+        (r1, r2, i, s, p)
+
+      Where:
+        - storage is in region r1 (with instance i, parallel factor p),
+        - transfer is (r1->r2),
+        - compute is in region r2 (with instance i, parallel factor p), starting time s.
+
+      The total cost = storage_cost_map[r1, i, p]
+                     + transfer_cost_map[r1, r2]
+                     + compute_cost_map[r2, i, s, p][0][1]
+      Exactly one tuple is chosen (x=1), to minimize total cost.
     """
 
     storage_price_list = get_storage_cost(provider, volume, premium, lrs, client)
@@ -159,9 +213,22 @@ def fill_storage_cost_map(provider, volume, premium, lrs, instance_list, client,
 
 def fill_transfer_cost_map(provider, client):
     """
-    Creates a map of transfer costs for *all* (regionFrom, regionTo) pairs.
-    Key:   (regionFrom, regionTo)
-    Value: transfer cost per GB
+    Creates a dictionary mapping each (regionFrom, regionTo) pair to its transfer cost per GB.
+    This map is used to estimate data transfer costs between regions.
+
+    Linear Model Optimization:
+      Builds and solves a linear model picking exactly ONE combination of:
+        (r1, r2, i, s, p)
+
+      Where:
+        - storage is in region r1 (with instance i, parallel factor p),
+        - transfer is (r1->r2),
+        - compute is in region r2 (with instance i, parallel factor p), starting time s.
+
+      The total cost = storage_cost_map[r1, i, p]
+                     + transfer_cost_map[r1, r2]
+                     + compute_cost_map[r2, i, s, p][0][1]
+      Exactly one tuple is chosen (x=1), to minimize total cost.
     """
     transfer_cost_map = {}
 
@@ -177,7 +244,8 @@ def fill_transfer_cost_map(provider, client):
             transfer_cost_map[(region_from, region_to)] = cost
     return transfer_cost_map
 
-
+"""
+#Testing
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
@@ -191,3 +259,4 @@ client = MongoClient(connection_string)
 list_test = [["FX48-12mds v2 Spot", 90900], ["E2s v5 Spot", 3000]]
 
 (fill_compute_cost_map_all_performance("Azure", list_test, client, [1, 2]))
+"""
