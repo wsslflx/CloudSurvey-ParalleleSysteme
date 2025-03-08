@@ -50,7 +50,7 @@ def optimize(
                     # match on region r2 and instance i
                     compute_cost = compute_cost_map[(r2_c, i_c, s_c, p_c)]
 
-                    total_cost = storage_cost + (transfer_c * p_s) + compute_cost[0][1] #use mean cost for compute_cost
+                    total_cost = storage_cost + (transfer_c * p_s) + p_s * compute_cost[0][1] #use mean cost for compute_cost
 
                     quintuple = (r1, r2, i_s, s_c, p_s)
                     feasible_keys.append(quintuple)
