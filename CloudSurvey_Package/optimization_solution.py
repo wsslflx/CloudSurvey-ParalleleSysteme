@@ -29,6 +29,38 @@ def main_no_storage(provider, list, konfidenzgrad, connection_string_compute):
         generate_output(total_cost, single_cost, konfidenzgrad, True, provider)
 
 def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, lrs, parallelization):
+    """
+        Builds and solves a linear model picking exactly ONE combination of:
+          (r1, r2, i, s, p)
+
+        Where:
+          - storage is in region r1 (with instance i, parallel factor p),
+          - transfer is (r1->r2),
+          - compute is in region r2 (with instance i, parallel factor p),
+            starting time s.
+
+        The total cost = storage_cost_map[r1, i, p]
+                       + transfer_cost_map[r1, r2]
+                       + compute_cost_map[r2, i, s, p][0][1]
+        Exactly one tuple is chosen (x=1), to minimize total cost.
+
+        This function performs the following steps:
+          - Loads environment variables and retrieves connection strings.
+          - Establishes connections to compute and storage databases.
+          - Normalizes the provider name to "AWS" or "Azure".
+          - Constructs cost maps for compute, storage, and transfer by calling corresponding functions.
+          - Builds and solves the optimization model using the optimize function.
+          - Prints the model status, objective value, and chosen cost combinations.
+
+        Parameters:
+          provider (str): Cloud provider name (e.g., "AWS" or "Azure").
+          instance_list (list): List of instances with their associated parameters.
+          konfidenzgrad (int): Confidence level used in cost computations.
+          volume (float): Volume metric for storage cost calculation.
+          premium (bool): Indicator for using premium storage.
+          lrs (bool): Flag for local redundant storage.
+          parallelization (list): List of parallelization factors to consider.
+        """
     load_dotenv()
     connection_string_compute = os.getenv('MONGODB_URI')
     connection_string_storage = os.getenv('MONGODB_URI2')
@@ -63,7 +95,8 @@ def main_optimization(provider, instance_list, konfidenzgrad, volume, premium, l
                 "cost": var_obj.varValue
             })
 
-
+"""
+#Testing
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -73,3 +106,4 @@ connection_string_storage = os.getenv('MONGODB_URI2')
 instance_list = [["FX48-12mds v2 Spot", 360000], ["E2s v5 Spot", 300000]]
 parallelization = [1, 2, 4]
 print(main_optimization("Azure", instance_list, 95, 200, True, False, parallelization))
+"""

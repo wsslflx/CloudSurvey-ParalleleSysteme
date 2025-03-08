@@ -4,6 +4,18 @@ def get_database(db_name, client):
     return client[db_name]
 
 def fetch_all_hours_prices(db, collection_name, instance_type, region):
+    """
+        Retrieves all hourly price documents for a specific instance type and region from the given database collection.
+
+        Where:
+          - db: The database containing the collection.
+          - collection_name: The name of the collection where spot prices are stored.
+          - instance_type: The instance type for which prices are retrieved.
+          - region: The region from which prices should be fetched.
+
+        Returns:
+          A list of all documents, sorted by "timestamp".
+    """
     collection = db[collection_name]
     query = {
         "instance_type": instance_type,
@@ -15,6 +27,20 @@ def fetch_all_hours_prices(db, collection_name, instance_type, region):
 
 def fetch_instance_prices(db_name, collection_name,
                           instance_type, hour, region, client):
+    """
+        Retrieves spot price documents for a specific instance type, hour, and region from the given database.
+
+        Where:
+          - db_name: The name of the database containing the collection.
+          - collection_name: The name of the collection where spot prices are stored.
+          - instance_type: The instance type for which prices are retrieved.
+          - hour: The hour for which prices should be fetched.
+          - region: The region from which prices should be fetched.
+          - client: The MongoDB client used for the connection.
+
+        Returns:
+          A list of documents sorted by "timestamp" containing the spot prices.
+    """
     db = client[db_name]
     collection = db[collection_name]
 
@@ -31,6 +57,21 @@ def fetch_instance_prices(db_name, collection_name,
     return results
 
 def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, client):
+    """
+        Retrieves spot prices for each hour of the day for a given provider, instance type, and region.
+        Computes the confidence interval for the prices per hour using the provided confidence level.
+
+        Where:
+          - provider: The provider, e.g., "Azure" or "AWS".
+          - instance: The instance type for which prices are retrieved.
+          - region: The region from which prices should be fetched.
+          - konfidenzgrad: The confidence level for calculating the confidence interval.
+          - client: The MongoDB client used for the connection.
+
+        Returns:
+          A list of confidence intervals (as lists) for each hour (0 to 23).
+          If data is missing, [0, 0, 0] is returned.
+    """
     if provider == "Azure":
         db = get_database("AzureSpotPricesDB", client)
         collection_name = "SpotPrices"
@@ -64,6 +105,20 @@ def get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, clie
     return costs
 
 def fetch_storage_prices(provider, skuName, client):
+    """
+        Retrieves storage prices for a given provider and SKU name from the corresponding database.
+        For Azure, matches by skuName exactly (case-insensitive) and filters by "1/Month" unit.
+        For AWS, performs a case-insensitive match on the description.
+
+        Where:
+          - provider: The provider, e.g., "Azure" or "AWS".
+          - skuName: The SKU name for which prices should be fetched.
+          - client: The MongoDB client used for the connection.
+
+        Returns:
+          A list of dictionaries containing region, SKU/description, and price.
+          Returns an empty list in case of errors or missing results.
+    """
     if provider == "Azure":
         db = get_database("azure_storage_pricing_db", client)
         collection_name = "StoragePrices"
@@ -111,6 +166,19 @@ def fetch_storage_prices(provider, skuName, client):
     return []
 
 def fetch_transfer_prices(provider, fromRegion, toRegion, client):
+    """
+        Retrieves transfer prices for AWS from the corresponding database for a specific region-to-region transfer.
+
+        Where:
+          - provider: The provider (only "AWS" is supported).
+          - fromRegion: The source region of the transfer.
+          - toRegion: The target region of the transfer.
+          - client: The MongoDB client used for the connection.
+
+        Returns:
+          A list of dictionaries containing the transfer price.
+          Returns an empty list in case of errors or missing results.
+    """
     if provider == "AWS":
         db = get_database("aws_storage_pricing_db", client)
         collection_name = "aws_ebs_prices"
@@ -136,6 +204,18 @@ def fetch_transfer_prices(provider, fromRegion, toRegion, client):
             return []
 
 def get_mean_spot_price(client, instance_types, provider):
+    """
+        Retrieves the mean spot price per hour for a list of instance types for a given provider.
+        Delegates the calculation to provider-specific functions based on the provider value.
+
+        Where:
+          - client: The MongoDB client used for the connection.
+          - instance_types: A list of instance types for which average prices should be calculated.
+          - provider: The provider, e.g., "AWS" or "Azure".
+
+        Returns:
+          A list of documents containing the average spot price per hour.
+    """
     if provider == "AWS":
         db = get_database("aws_spot_prices_db", client)
         collection_name = "aws_spot_prices"
@@ -148,7 +228,18 @@ def get_mean_spot_price(client, instance_types, provider):
 
 
 def get_mean_spot_prices_aws(db, collection_name, instance_types):
+    """
+        Calculates the average AWS spot prices grouped by instance type, hour, and region.
+        Uses an aggregation pipeline to compute the average spot price in Euro.
 
+        Where:
+          - db: The database containing AWS spot prices.
+          - collection_name: The name of the collection storing AWS spot prices.
+          - instance_types: A list of instance types to be included in the aggregation.
+
+        Returns:
+          A list of documents containing instance type, hour, region, and the computed average price.
+    """
     collection = db[collection_name]
 
     pipeline = [
@@ -184,7 +275,18 @@ def get_mean_spot_prices_aws(db, collection_name, instance_types):
     return list(collection.aggregate(pipeline))
 
 def get_mean_spot_prices_azure(db, collection_name, instance_types):
+    """
+        Calculates the average Azure spot prices grouped by instance type, hour, and region.
+        Uses an aggregation pipeline with rounding applied to the computed average price.
 
+        Where:
+          - db: The database containing Azure spot prices.
+          - collection_name: The name of the collection where Azure spot prices are stored.
+          - instance_types: A list of instance types to be included in the aggregation.
+
+        Returns:
+          A list of documents containing the instance type, hour, region, and the rounded average price.
+    """
     collection = db[collection_name]
 
     pipeline = [

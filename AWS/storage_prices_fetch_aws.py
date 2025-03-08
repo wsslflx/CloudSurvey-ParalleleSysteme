@@ -8,6 +8,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_pricing_client(aws_access_key, aws_secret_key):
+    """
+        Creates a boto3 pricing client configured to interact with AWS pricing API.
+
+        Parameters:
+          - aws_access_key: AWS access key ID.
+          - aws_secret_key: AWS secret access key.
+
+        Returns:
+          A boto3 client instance for the AWS pricing service in the 'us-east-1' region.
+        """
     return boto3.client(
         'pricing',
         region_name='us-east-1',  # Pricing API only operates in us-east-1
@@ -17,8 +27,17 @@ def get_pricing_client(aws_access_key, aws_secret_key):
 
 def fetch_storage_pricing_data(pricing_client, service_code, region_name, product_family):
     """
-    Returns a list of raw pricing data for the specified service_code, region_name, and product_family.
-    """
+        Fetches raw storage pricing data from the AWS Pricing API for a given service, region, and product family.
+
+        Parameters:
+          - pricing_client: The AWS pricing client instance.
+          - service_code: The AWS service code (e.g., 'AmazonEFS' or 'AmazonEC2').
+          - region_name: The AWS region identifier (e.g., 'eu-central-1').
+          - product_family: The product family to filter pricing data (e.g., 'Storage').
+
+        Returns:
+          A list of JSON strings containing raw pricing data. If the region is unmapped or no data is found, returns an empty list.
+        """
     paginator = pricing_client.get_paginator('get_products')
     pricing_data = []
 
@@ -51,8 +70,17 @@ def fetch_storage_pricing_data(pricing_client, service_code, region_name, produc
 
 def fetch_transfer_pricing_data(client, from_region, to_region):
     """
-    Returns a list of raw data transfer products for the given region pair.
-    """
+        Retrieves raw data transfer pricing information from the AWS Pricing API between two specified regions.
+
+        Parameters:
+          - client: The AWS pricing client instance.
+          - from_region: The source AWS region code.
+          - to_region: The destination AWS region code.
+
+        Returns:
+          A list of JSON strings containing raw data transfer pricing information.
+          In case of an error during the fetch, returns an empty list.
+        """
     try:
         response = client.get_products(
             ServiceCode='AWSDataTransfer',
@@ -70,7 +98,20 @@ def fetch_transfer_pricing_data(client, from_region, to_region):
 
 def transform_efs_data(pricing_data, region):
     """
-    Transforms raw EFS pricing data into a list of documents for MongoDB.
+    Transforms raw EFS pricing data into a structured list of documents suitable for MongoDB insertion.
+
+    The transformation process:
+      - Parses the JSON pricing data.
+      - Filters entries where the 'storageClass' attribute is "EFS Storage".
+      - Checks the price description to classify the operation as either 'read' or 'write'.
+
+    Parameters:
+      - pricing_data: A list of raw JSON strings with pricing information.
+      - region: The AWS region identifier for the pricing data.
+
+    Returns:
+      A list of dictionaries with keys:
+        - region, storageClass, usageType, description, unit, price, effectiveDate, sku.
     """
     transformed_data = []
     for price_item in pricing_data:
@@ -102,7 +143,20 @@ def transform_efs_data(pricing_data, region):
 
 def transform_ebs_data(storage_data, region):
     """
-    Transforms raw EBS pricing data into a list of documents for MongoDB.
+    Transforms raw EBS pricing data into a structured list of documents suitable for MongoDB insertion.
+
+    The transformation process:
+      - Parses the JSON pricing data.
+      - Filters entries where the 'volumeType' attribute is "General Purpose".
+      - Extracts pricing details and other attributes.
+
+    Parameters:
+      - storage_data: A list of raw JSON strings with EBS pricing information.
+      - region: The AWS region identifier for the pricing data.
+
+    Returns:
+      A list of dictionaries with keys:
+        - region, volumeType, usageType, description, unit, price, effectiveDate, sku.
     """
     transformed_data = []
     for storage_item in storage_data:
@@ -127,7 +181,22 @@ def transform_ebs_data(storage_data, region):
     return transformed_data
 
 def transform_transfer_data(transfer_data, from_region, to_region):
+    """
+        Transforms raw data transfer pricing data into a structured list of documents suitable for MongoDB insertion.
 
+        The transformation process:
+          - Parses the JSON pricing data.
+          - Iterates over the on-demand terms to extract pricing dimensions.
+
+        Parameters:
+          - transfer_data: A list of raw JSON strings with data transfer pricing information.
+          - from_region: The source AWS region code.
+          - to_region: The destination AWS region code.
+
+        Returns:
+          A list of dictionaries with keys:
+            - fromRegion, toRegion, description, unit, price, effectiveDate, sku.
+    """
     transformed_data = []
     for raw_item in transfer_data:
         product = json.loads(raw_item)
@@ -149,9 +218,15 @@ def transform_transfer_data(transfer_data, from_region, to_region):
 
 def insert_data_to_db(collection, data):
     """
-    Inserts a list of documents into the specified collection via insert_many.
-    Returns the number of inserted documents.
-    """
+        Inserts a list of documents into a MongoDB collection using the insert_many method.
+
+        Parameters:
+          - collection: The MongoDB collection where documents should be inserted.
+          - data: A list of dictionaries representing the documents to be inserted.
+
+        Returns:
+          The number of documents successfully inserted.
+        """
     if data:
         collection.insert_many(data)
         return len(data)

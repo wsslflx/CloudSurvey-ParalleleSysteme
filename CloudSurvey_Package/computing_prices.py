@@ -6,6 +6,22 @@ import numpy as np
 
 #fetch Instance Price from Database for specific time and return median
 def get_instancePriceperHour(provider, instance, hour, region, client):
+    """
+        Retrieves the instance prices for a specific provider, instance type, hour, region, and client.
+
+        Fetches data from the corresponding database based on the provider ("Azure" or "AWS") and returns a list
+        of spot prices for the given time slot.
+
+        Parameters:
+          - provider: The cloud provider name (e.g., "Azure" or "AWS").
+          - instance: The type of instance to fetch prices for.
+          - hour: The specific hour for which the price is needed.
+          - region: The region in which the instance is located.
+          - client: The database client connection.
+
+        Returns:
+          A list of spot prices extracted from the database records.
+        """
     list = []
     if provider == "Azure":
         list = fetch_instance_prices("AzureSpotPricesDB", "SpotPrices", instance, hour, region, client)
@@ -16,6 +32,26 @@ def get_instancePriceperHour(provider, instance, hour, region, client):
     return prices
 
 def cost_one_job(priceList, hourCombination, duration):
+    """
+        Calculates the minimum, mean, and maximum cost for executing one job over a given hour combination and duration.
+
+        The method evaluates two scenarios based on whether the duration is an integer or fractional:
+          - For integer durations, sums the costs for each hour in the combination.
+          - For fractional durations, splits the cost calculation into beginning and ending partial hours
+            and selects the scenario with the lower mean cost.
+
+        Parameters:
+          - priceList: A list of price details for each hour, where each element is a list of costs [min, mean, max].
+          - hourCombination: A list of hours that form the combination to be evaluated.
+          - duration: The duration of the job (can be a fractional hour).
+
+        Returns:
+          A tuple containing:
+            - The computed minimum cost.
+            - The computed mean cost.
+            - The computed maximum cost.
+            - The start time (or adjusted starting hour) for the job.
+        """
     min_cost = 0
     mean_cost = 0
     max_cost = 0
@@ -73,6 +109,24 @@ def cost_one_job(priceList, hourCombination, duration):
             return min_cost_atBeginning, mean_cost_atBeginning, max_cost_atBeginning, hourCombination[0]
 
 def min_cost_instance(provider, instance, duration, region, konfidenzgrad, client):
+    """
+        Determines the instance slot with the minimum cost for a specific job.
+
+        The method fetches cost data per hour and generates all possible hour combinations based on the job duration.
+        It then evaluates each combination to find the one with the minimum mean cost that is greater than zero.
+
+        Parameters:
+          - provider: The cloud provider name ("Azure" or "AWS").
+          - instance: The instance type for which the cost is to be computed.
+          - duration: The duration of the job (in hours).
+          - region: The region where the instance is located.
+          - konfidenzgrad: The confidence level used in filtering cost data.
+          - client: The database client connection.
+
+        Returns:
+          Either a list representing the best slot with minimum cost [min_cost, mean_cost, max_cost, startTime, duration, region]
+          or the string "no slot available" if no valid pricing data is found.
+        """
     costs_slot = []
     costsPerHour = get_all_instancePriceperHour(provider, instance, region, konfidenzgrad, client)
     hour_combinations = get_hour_combinations(duration)
@@ -91,6 +145,23 @@ def min_cost_instance(provider, instance, duration, region, konfidenzgrad, clien
 
 
 def one_job_complete(list, provider, regions, konfidenzgrad, client):
+    """
+        Computes the complete cost details for one job across different instances and regions.
+
+        For each instance in the provided list, the function calculates the job duration, evaluates the cost
+        across the specified regions, and returns the optimal cost configuration for each instance.
+
+        Parameters:
+          - list: A list of instances with their respective durations (in seconds).
+          - provider: The cloud provider name ("Azure" or "AWS").
+          - regions: A list of regions to be evaluated.
+          - konfidenzgrad: The confidence level used for cost calculations.
+          - client: The database client connection.
+
+        Returns:
+          A list of tuples, each containing the best cost configuration for an instance, including details such as
+          minimum cost, mean cost, maximum cost, and the associated starting hour.
+        """
     costs_slot_time =[]
     first_positive = []
     for instance in list:
@@ -105,6 +176,24 @@ def one_job_complete(list, provider, regions, konfidenzgrad, client):
     return first_positive
 
 def multiple_jobs(provider, jobs, konfidenzgrad, client):
+    """
+        Aggregates cost computations for multiple jobs or a single job based on input dimensions.
+
+        Depending on whether the input jobs list is 2-dimensional (a single job) or 3-dimensional (multiple jobs),
+        the function computes the optimal cost configurations and aggregates total costs (min, mean, max) and durations.
+
+        Parameters:
+          - provider: The cloud provider name ("Azure" or "AWS").
+          - jobs: A nested list representing one or multiple jobs with instance details.
+          - konfidenzgrad: The confidence level used for cost filtering.
+          - client: The database client connection.
+
+        Returns:
+          For multiple jobs:
+            A tuple containing the total aggregated cost (min, mean, max, duration) and a list of single job cost details.
+          For a single job:
+            A tuple with total costs and detailed single job cost breakdown.
+        """
     results_multiple_jobs = []
     aws_regions = constants.aws_regions
     azure_regions = constants.azure_regions
@@ -158,6 +247,30 @@ def compute_cost_for_start_hour(
     prefix_mean,
     prefix_max
 ):
+    """
+        Computes the cost for a job starting at a specific hour based on its effective duration.
+
+        The method evaluates two scenarios:
+          - Scenario 1: The fractional part of the duration is applied at the beginning of the period.
+          - Scenario 2: The fractional part is applied at the end.
+        It calculates the minimum, mean, and maximum cost for each scenario using provided cost arrays and prefix sums,
+        and then selects the scenario with the lower mean cost.
+
+        Parameters:
+          - start_hour: The hour at which the job is proposed to start.
+          - duration_hours: The total duration of the job (can be fractional).
+          - extended_costs: A list or array containing cost details [min, mean, max] for each hour.
+          - prefix_min: Prefix sum array for minimum costs.
+          - prefix_mean: Prefix sum array for mean costs.
+          - prefix_max: Prefix sum array for maximum costs.
+
+        Returns:
+          A tuple containing:
+            - The computed minimum cost.
+            - The computed mean cost.
+            - The computed maximum cost.
+            - The adjusted starting time for the job.
+        """
     int_dur = int(duration_hours)               # integer part of duration
     frac_dur = duration_hours - int_dur         # fractional part
 
@@ -217,18 +330,23 @@ def compute_cost_for_start_hour(
 
 def find_cheapest_slot_vectorized(instance_list, pricing_data, region, parallelization):
     """
-    For each instance (given as [instance_type, duration_in_seconds]) and for each allowed
-    parallelization factor (a list of integers), this function finds the best starting hour (0-23)
-    in the given region that minimizes the total cost.
+    Finds the cheapest cost slot for each instance using vectorized operations based on pricing data and parallelization factors.
 
-    When using a parallelization factor p, the effective duration for each instance becomes
-    duration / p, and the total cost is p * (cost for effective duration).
+    For each instance (represented as [instance_type, duration_in_seconds]), the function:
+      - Builds a NumPy array of hourly prices for the given region.
+      - For each allowed parallelization factor, calculates the effective duration per instance and computes the cost
+        for each possible starting hour (0-23) considering full days, extra full hours, and fractional hours.
+      - Determines the starting hour that yields the lowest cost per instance.
 
-    Returns a dict mapping:
-        instance_type -> {
-            parallel_factor: (region, best_start_hour, total_cost, effective_duration)
-            for each parallel_factor in the input list
-        }
+    Parameters:
+      - instance_list: A list of instances, each represented as [instance_type, duration_in_seconds].
+      - pricing_data: A list of pricing records containing instance_type, region, hour, and spot_price.
+      - region: The region in which the pricing data should be considered.
+      - parallelization: A list of allowed parallelization factors (integers).
+
+    Returns:
+      A dictionary mapping each instance type to another dictionary that maps each parallelization factor to a tuple:
+        (region, best_start_hour, total_cost, effective_duration)
     """
     results = {}
     # Build mapping: instance_type -> NumPy array of shape (24,) for the given region.

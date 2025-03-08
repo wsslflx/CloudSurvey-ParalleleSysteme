@@ -6,20 +6,20 @@ def optimize(
     transfer_cost_map
 ):
     """
-        Builds and solves a linear model picking exactly ONE combination of:
-          (r1, r2, i, s, p)
+    Builds and solves a linear model picking exactly ONE combination of:
+      (r1, r2, i, s, p)
 
-        Where:
-          - storage is in region r1 (with instance i, parallel factor p),
-          - transfer is (r1->r2),
-          - compute is in region r2 (with instance i, parallel factor p),
-            starting time s.
+    Where:
+      - storage is in region r1 (with instance i, parallel factor p),
+      - transfer is (r1->r2),
+      - compute is in region r2 (with instance i, parallel factor p),
+        starting time s.
 
-        The total cost = storage_cost_map[r1, i, p]
-                       + transfer_cost_map[r1, r2]
-                       + compute_cost_map[r2, i, s, p][0][1]
-        Exactly one tuple is chosen (x=1), to minimize total cost.
-        """
+    The total cost = storage_cost_map[r1, i, p]
+                   + transfer_cost_map[r1, r2]
+                   + compute_cost_map[r2, i, s, p][0][1]
+    Exactly one tuple is chosen (x=1), to minimize total cost.
+    """
 
     model = pulp.LpProblem("Unified_Cloud_Optimization", pulp.LpMinimize)
 
