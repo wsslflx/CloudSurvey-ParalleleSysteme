@@ -134,8 +134,94 @@ def fetch_transfer_prices(provider, fromRegion, toRegion, client):
         except Exception as e:
             print(f"Error querying the database: {e}")
             return []
-"""
 
+def get_mean_spot_price(client, instance_types, provider):
+    if provider == "AWS":
+        db = get_database("aws_spot_prices_db", client)
+        collection_name = "aws_spot_prices"
+        prices_per_hour = get_mean_spot_prices_aws(db, collection_name, instance_types)
+    else:
+        db = get_database("AzureSpotPricesDB", client)
+        collection_name = "SpotPrices"
+        prices_per_hour = get_mean_spot_prices_azure(db, collection_name, instance_types)
+    return prices_per_hour
+
+
+def get_mean_spot_prices_aws(db, collection_name, instance_types):
+
+    collection = db[collection_name]
+
+    pipeline = [
+        # Filter documents by instance types
+        {
+            "$match": {
+                "instance_type": {"$in": instance_types}
+            }
+        },
+        # Group by instance_type, hour, and region, calculating the average spot_price_eur
+        {
+            "$group": {
+                "_id": {
+                    "instance_type": "$instance_type",
+                    "hour": "$hour",
+                    "region": "$region"
+                },
+                "averageSpotPriceEur": {"$avg": "$spot_price_eur"}
+            }
+        },
+        # Reshape the results
+        {
+            "$project": {
+                "_id": 0,
+                "instance_type": "$_id.instance_type",
+                "hour": "$_id.hour",
+                "region": "$_id.region",
+                "spot_price_eur": "$averageSpotPriceEur"
+            }
+        }
+    ]
+
+    return list(collection.aggregate(pipeline))
+
+def get_mean_spot_prices_azure(db, collection_name, instance_types):
+
+    collection = db[collection_name]
+
+    pipeline = [
+        # Filter documents by instance types
+        {
+            "$match": {
+                "instance_type": {"$in": instance_types}
+            }
+        },
+        # Group by instance_type, hour, and region, calculating the average spot_price_eur
+        {
+            "$group": {
+                "_id": {
+                    "instance_type": "$instance_type",
+                    "hour": "$hour",
+                    "region": "$region"
+                },
+                "averageSpotPrice": {"$avg": "$spot_price"}
+            }
+        },
+        # Reshape the results
+        {
+            "$project": {
+                "_id": 0,
+                "instance_type": "$_id.instance_type",
+                "hour": "$_id.hour",
+                "region": "$_id.region",
+                "spot_price": {"$round": ["$averageSpotPrice", 4]}
+            }
+        }
+    ]
+
+    return list(collection.aggregate(pipeline))
+
+
+
+"""
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv 
@@ -144,6 +230,10 @@ load_dotenv()
 connection_string = os.getenv('MONGODB_URI')
 connection_string2 = os.getenv('MONGODB_URI2')
 
-client = MongoClient(connection_string2)
-print(fetch_storage_prices("AWS", "gp3", client))
+client = MongoClient(connection_string)
+
+list_test = ["FX48-12mds v2 Spot", "E2s v5 Spot"]
+results = (get_mean_spot_price(client, list_test, "Azure"))
+for result in results:
+    print(result)
 """
