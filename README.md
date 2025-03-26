@@ -11,6 +11,12 @@ Kostenfunktion:
 - Kosten der Computing Instanzen
 - Kosten der Storage Instanzen
 
+## Daten
+Die Preisdaten der Storageinstazen wurden mithilfe der Skripte storage_prices_fetch_aws.py und storage_prices_fetch_azure.py beschaffen.
+Die Preisdaten der Computinginstanzen wurden mithilfe der Skripte AWS_fetch_spot_prices.py und Azure_fetch_spot_prices.py beschaffen.
+
+Beide können die Skripte beispielsweise über Github-Actions regelmäßig ausgeführt werden.
+
 ## Set-Up
 Alle Pakete der requirements.txt müssen installiert sein.
 
