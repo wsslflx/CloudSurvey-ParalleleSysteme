@@ -24,9 +24,17 @@ Alle Pakete der requirements.txt müssen installiert sein.
 
 #todo: Beschreibung aufsetzten von Jobschätzung
 
-Erstellen Sie eine json file für die Inputparameter. 
+Erstellen Sie eine json file für die Inputparameter.
 Die Datei input_parameter.json kann dabei als Vorlage oder Demo dienen.
 
 In der Datei app.py beachten Sie, dass der richtige Pfad für die Inputparameter genutzt wird.
 
 Führen Sie die python datei aus.
+
+## Abhängigkeiten
+Für die Simulation greift dieses Projekt auf das CloudSim-Modul unter folgendem Repository zu:
+
+[https://github.com/Houou101/cloudsim-hpc](https://github.com/Houou101/cloudsim-hpc)
+
+Stellen Sie sicher, dass die CloudSim-Simulation sowie die zugehörige REST-API dort gestartet wurden, bevor Sie dieses Tool verwenden.
+
