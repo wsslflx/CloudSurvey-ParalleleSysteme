@@ -322,20 +322,3 @@ def get_mean_spot_prices_azure(db, collection_name, instance_types):
     return list(collection.aggregate(pipeline))
 
 
-
-"""
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv 
-
-load_dotenv()
-connection_string = os.getenv('MONGODB_URI')
-connection_string2 = os.getenv('MONGODB_URI2')
-
-client = MongoClient(connection_string)
-
-list_test = ["FX48-12mds v2 Spot", "E2s v5 Spot"]
-results = (get_mean_spot_price(client, list_test, "Azure"))
-for result in results:
-    print(result)
-"""

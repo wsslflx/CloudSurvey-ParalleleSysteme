@@ -17,8 +17,47 @@ Die Preisdaten der Computinginstanzen wurden mithilfe der Skripte AWS_fetch_spot
 
 Beide können die Skripte beispielsweise über Github-Actions regelmäßig ausgeführt werden.
 
+Test Daten sind in den Zip Dateien enthalten.
+
 ## Set-Up
 Alle Pakete der requirements.txt müssen installiert sein.
+
+Zusätzlich müssen in der .env dateien url´s für die MongoDB Datenbanken gesetzt werden.
+Wenn Sie eine andere Datenbank verwenden wollen, müssen Sie dies in der Datei db_operations.py angepen
+
+Die Datenbanken sind folgendermaßen aufgebaut:
+
+DB:  
+aws_storage_pricing_db \
+    Collection: \
+    aws_data_transfer_prices\
+    aws_ebs_prices\
+    aws_efs_prices
+
+azure_storage_pricing_db\
+    Collection:\
+    StoragePrices\
+    TransferPrices
+
+AWSInstancesDB\
+    Collection:\
+    AWSInstancesCollection
+
+AzureInstancesDB\
+    Collection:\
+    AzureInstancesCollection
+
+AzureSpotPricesDB\
+    Collection:\
+    SpotPrices
+
+aws_spot_prices_db \
+    Collection:\
+    aws_spot_prices
+
+        
+    
+    
 
 ## Usage
 
