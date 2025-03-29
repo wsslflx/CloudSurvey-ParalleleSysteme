@@ -56,7 +56,7 @@ aws_spot_prices_db \
     aws_spot_prices
 
         
-    
+Dies kann nach belieben geändert werden, muss aber in db_operations.py dementsprechend angepasst werden.
     
 
 ## Usage
