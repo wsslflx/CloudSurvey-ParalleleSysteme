@@ -22,14 +22,20 @@ Alle Pakete der requirements.txt müssen installiert sein.
 
 ## Usage
 
-#todo: Beschreibung aufsetzten von Jobschätzung
 
 Erstellen Sie eine json file für die Inputparameter.
 Die Datei input_parameter.json kann dabei als Vorlage oder Demo dienen.
 
-In der Datei app.py beachten Sie, dass der richtige Pfad für die Inputparameter genutzt wird.
+Beachten Sie nun, dass in der Python Datei main.py, die richtige Json Datei angegeben ist.
 
-Führen Sie die python datei aus.
+Zusätzlich müssen die richtigen IP Adressen, für die HTTP request eingetragen werden.
+In main.py muss der Parameter url angepasst werden, zu der IP Adresse in der app.py gestartet werden soll.
+In app.py muss der Parameter url_simulate angepasst werden, zu der IP Adresse, in der CloudSim gestartet wurde.
+
+Nun führen Sie zuerst CloudSim aus(siehe Abhängigkeiten), dann app.py.
+Jetzt können Sie einen request senden, indem Sie main.py laufen lassen.
+Das Ergebnis wird sowohl geprintet als auch als eigene Json Datei gepspeichert.
+
 
 ## Abhängigkeiten
 Für die Simulation greift dieses Projekt auf das CloudSim-Modul unter folgendem Repository zu:
