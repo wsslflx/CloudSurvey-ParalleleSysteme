@@ -13,9 +13,9 @@ connection_string_compute = os.getenv('MONGODB_URI')
 
 app = Flask(__name__)
 
+"""
 instance_list = [["FX48-12mds v2 Spot", 3600],["E2s v5 Spot", 3000]]
 
-"""
 list_test = ([["FX48-12mds v2 Spot", 3600],["E2s v5 Spot", 3000]])
 parallelization_set = [1, 2, 4]
 """
@@ -26,7 +26,7 @@ def optimize():
     data = request.json
 
     provider = data['provider']
-    # instance_list = data['instance_list']
+    instance_list = data['instance_list']
     konfidenzgrad = data['konfidenzgrad']
     volume = data['volume']
     premium = data['premium']
@@ -50,30 +50,13 @@ def optimize():
     mips = predict_mips(model_path, partition, nnodes, ncpus, io_usage, memory_usage, data_input_size, data_output_size,
                  elapsed_time, encoder, partition_columns)
 
-    url = "http://136.172.12.144:8080/simulate"
-    data = {
-        "provider": "Azure",
-        "konfidenzgrad": 95,
-        "volume": 500,
-        "premium": True,
-        "lrs": True,
-        "parallelization": [1, 2, 4],
-        "partition": "normal",
-        "nnodes": 4,
-        "ncpus": 32,
-        "io_usage": 2.5,
-        "memory_usage": 128.0,
-        "data_input_size": 50.0,
-        "data_output_size": 10.0,
-        "elapsed_time": 3600
-    }
 
     mips = int(mips)
 
     logging.basicConfig(level=logging.INFO)
 
-    url2 = "http://192.168.178.28:8080/simulate/" + provider.lower() + "?cloudletLength=" + str(mips)
-    instances = requests.get(url2)
+    url_simulate = "http://192.168.178.28:8080/simulate/" + provider.lower() + "?cloudletLength=" + str(mips)
+    instances = requests.get(url_simulate)
 
     instances2 = instances.json()
 
